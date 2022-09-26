@@ -1,7 +1,7 @@
 # ratelimiter
 A free and easy-to-use rate limiter
 
-## Contest
+## Context
 You need to limit access to a specific function
 
 
