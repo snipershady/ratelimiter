@@ -30,8 +30,11 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService {
      * {@inheritDoc}
      */
     public function isLimited(string $key, int $limit, int $ttl): bool {
+        $this->checkKey($key);
+        $this->checkTTL($ttl);
+        $step = 1;
         $success = null;
-        return apcu_inc($key, 1, $success, $ttl) > $limit;
+        return apcu_inc($key, $step, $success, $ttl) > $limit;
     }
 
 }

@@ -39,6 +39,8 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService {
      * <p>The strategy with the Redis instance is more secure than APCu, because of the transaction that grants all-or-nothing execution</p>
      */
     public function isLimited(string $key, int $limit, int $ttl): bool {
+        $this->checkKey($key);
+        $this->checkTTL($ttl);
         return ($this->redis->transaction()->incr($key)->expire($key, $ttl)->get($key)->execute())[0] > $limit;
     }
 

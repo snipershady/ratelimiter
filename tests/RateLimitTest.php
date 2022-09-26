@@ -36,8 +36,9 @@ class RateLimitTest extends AbstractTestCase {
     private string $servername = "redis-server";
 
     public function testLimitApcu() {
+        //$this->markTestSkipped();
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = "test" . time();
+        $key = "test" . microtime(true);
         $limit = 2;
         $ttl = 3;
         $countFalse = 0;
@@ -54,10 +55,11 @@ class RateLimitTest extends AbstractTestCase {
     }
 
     public function testLimitRedis() {
+        // $this->markTestSkipped();
         $redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
 
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
-        $key = "test" . time();
+        $key = "test" . microtime(true);
         $limit = 2;
         $ttl = 3;
         $countFalse = 0;
@@ -71,6 +73,51 @@ class RateLimitTest extends AbstractTestCase {
         //echo $countFalse;
         $this->assertTrue($countFalse === $limit);
         $this->assertTrue($countTrue === ($attempts - $limit));
+    }
+
+    public function testLimitRedisLimitOne() {
+        // $this->markTestSkipped();
+        $redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
+
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+        $key = "test" . microtime(true);
+        $limit = 1;
+        $ttl = 3;
+        $countFalse = 0;
+        $countTrue = 0;
+        $attempts = 5;
+        for ($i = 0; $i < $attempts; $i++) {
+            $result = $limiter->isLimited($key, $limit, $ttl);
+            $countFalse = $result === false ? $countFalse + 1 : $countFalse;
+            $countTrue = $result === true ? $countTrue + 1 : $countTrue;
+        }
+        //echo $countFalse;
+        $this->assertTrue($countFalse === $limit);
+        $this->assertTrue($countTrue === ($attempts - $limit));
+    }
+
+    public function testLimitRedisLimitOneAgain() {
+        // $this->markTestSkipped();
+        $redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
+
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+        $key = "test" . microtime(true);
+        $limit = 1;
+        $ttl = 2;
+
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertFalse($result);
+
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertTrue($result);
+        
+        sleep($ttl);
+        
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertFalse($result);
+        
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertTrue($result);
     }
 
 }
