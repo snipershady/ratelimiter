@@ -39,11 +39,12 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService {
             $actual = apcu_inc($key, $step, $success, $ttl);
         } else {
             $current = apcu_fetch($key);
-            $actual = $current +1;
+            $actual = $current + 1;
             apcu_cas($key, $current, $actual);
         }
 
         return $actual > $limit;
     }
+    
 
 }

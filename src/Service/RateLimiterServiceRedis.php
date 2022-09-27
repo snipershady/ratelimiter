@@ -53,4 +53,21 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService {
         return false;
     }
 
+    public function isLimitedWIthBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame): bool {
+        // vorrei fare che se si supera maxAttempts allora il nuovo TTL sarà più grande di qualcosa passato in input o un moltiplicatore...
+        
+        $violationCountKey = "BAN_violation_".$key;
+        $needBan = $this->redis->get($violationCountKey);
+        if($needBan >= $maxAttempts){
+            $ttl = $ttl * 3;
+        }
+        $check = $this->isLimited($key, $limit, $ttl);
+        
+        if($check){
+            $actual = (int) ($this->redis->transaction()->expire($violationCountKey, $banTimeFrame)->get($violationCountKey)->execute())[0];
+        }
+        
+        return $actual > $maxAttempts;
+    }
+
 }

@@ -29,7 +29,7 @@ use InvalidArgumentException;
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 abstract class AbstractRateLimiterService {
-
+    
     private function __construct() {
         
     }
@@ -42,6 +42,8 @@ abstract class AbstractRateLimiterService {
      * @return bool
      */
     public abstract function isLimited(string $key, int $limit, int $ttl): bool;
+    
+    public abstract function isLimitedWIthBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame): bool;
 
     /**
      * <p>Verify if <b>ttl</b> parameter is positive integer. Throws InvalidArgumentException</p>

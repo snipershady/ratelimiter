@@ -25,6 +25,8 @@ namespace RateLimiter\Enum;
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 enum CacheEnum: int {
+
     case APCU = 1;
     case REDIS = 2;
+
 }
