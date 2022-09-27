@@ -41,7 +41,16 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService {
     public function isLimited(string $key, int $limit, int $ttl): bool {
         $this->checkKey($key);
         $this->checkTTL($ttl);
-        return ($this->redis->transaction()->incr($key)->expire($key, $ttl)->get($key)->execute())[0] > $limit;
+        $actual = (int)($this->redis->transaction()->incr($key)->get($key)->execute())[0];
+        if($actual === 1){
+           $actual = (int) ($this->redis->transaction()->expire($key, $ttl)->get($key)->execute())[0];
+        }
+        
+        if($actual > $limit){
+            return true;
+        }
+                
+        return false;
     }
 
 }

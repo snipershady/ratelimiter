@@ -48,7 +48,7 @@ abstract class AbstractRateLimiterService {
      * @param int $ttl
      * @throws InvalidArgumentException
      */
-    protected function checkTTL(int $ttl) {
+    protected function checkTTL(int $ttl): void {
         if ($ttl < 1) {
             throw new InvalidArgumentException("TTL must be positive integer $ttl given, instead");
         }
@@ -59,7 +59,7 @@ abstract class AbstractRateLimiterService {
      * @param string $key
      * @throws InvalidArgumentException
      */
-    protected function checkKey(string $key) {
+    protected function checkKey(string $key): void {
         if (empty($key)) {
             throw new InvalidArgumentException("Key cannot be empty, $key given, instead");
         }
@@ -70,7 +70,7 @@ abstract class AbstractRateLimiterService {
      * @param int $step
      * @throws InvalidArgumentException
      */
-    protected function checkStep(string $step) {
+    protected function checkStep(int $step): void {
         if ($step < 1) {
             throw new InvalidArgumentException("STEP must be positive integer $step given, instead");
         }
