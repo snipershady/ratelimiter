@@ -35,20 +35,12 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService {
         $step = 1;
         $success = null;
 
-        $actual = (int) apcu_fetch($key);
-var_dump($actual); 
-        if ($actual > $limit) {
-            return true;
-        }
-
-        if ($actual === 0) {
-            var_dump("ora zero e setto expire");
+        if (empty(apcu_exists($key))) {
             $actual = apcu_inc($key, $step, $success, $ttl);
-            var_dump(apcu_key_info($key)["ttl"]);
         } else {
-            var_dump("maggiore di zero");
-            $actual = apcu_store($key, $actual+1);
-            var_dump(apcu_key_info($key)["ttl"]);
+            $current = apcu_fetch($key);
+            $actual = $current +1;
+            apcu_cas($key, $current, $actual);
         }
 
         return $actual > $limit;
