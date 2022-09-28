@@ -26,16 +26,16 @@ use RateLimiter\Service\AbstractRateLimiterService;
 
 class Foo(){
     public function controllerYouWantToRateLimit(): Response {
-            $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-            $key = __METHOD__;  //Name of the function you want to rate limit. You can set a custom key. It's a String!
-            $limit = 2;         //Maximum attempts before the limit
-            $ttl = 3;           //The timeframe you want to limit access for
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+        $key = __METHOD__;  //Name of the function you want to rate limit. You can set a custom key. It's a String!
+        $limit = 2;         //Maximum attempts before the limit
+        $ttl = 3;           //The timeframe you want to limit access for
 
-            if($limiter->isLimited($key, $limit, $ttl)){
-                throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
-            }
+        if($limiter->isLimited($key, $limit, $ttl)){
+            throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
+        }
 
-            // ... other code
+        // ... other code
     }
 }
 ```
@@ -48,19 +48,18 @@ use RateLimiter\Service\AbstractRateLimiterService;
 
 class Foo(){
     public function controllerYouWantToRateLimit(): Response {
-            $serverIp = "192.168.0.100";        //The server where you've installed the Redis instance.
-            $redis = new Client("tcp://$serverIp:6379?persistent=redis01"); // Example with persistent connection.
+        $serverIp = "192.168.0.100";        //The server where you've installed the Redis instance.
+        $redis = new Client("tcp://$serverIp:6379?persistent=redis01"); // Example with persistent connection.
 
-            $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
-            $key = __METHOD__;  //Name of the function you want to rate limit. You can set a custom key. It's a String!
-            $limit = 2;         //Maximum attempts before the limit
-            $ttl = 3;           //The timeframe you want to limit access for
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+        $key = __METHOD__;  //Name of the function you want to rate limit. You can set a custom key. It's a String!
+        $limit = 2;         //Maximum attempts before the limit
+        $ttl = 3;           //The timeframe you want to limit access for
 
-            if($limiter->isLimited($key, $limit, $ttl)){
-                throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
-            }
-
-            // ... other code
+        if($limiter->isLimited($key, $limit, $ttl)){
+            throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
+        }
+        // ... other code
     }
 }
 ```
@@ -68,6 +67,9 @@ class Foo(){
 ### Rate Limit with Ban option (example with Redis, but you can use APCu anyway
 ### With the b
 ```php
+
+class Foo(){
+    public function controllerYouWantToRateLimit(): Response {
     $serverIp = "192.168.0.100";    //The server where you've installed the Redis instance.
     $redis = new Client("tcp://$serverIp:6379?persistent=redis01"); // Example with persistent connection.
     $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
@@ -79,9 +81,10 @@ class Foo(){
     $banTtl = 4;        // If a limit is reached greater equals time of max attempts, the new timeframe limit will be 4 seconds
     $clientIp = filter_input(INPUT_SERVER, 'REMOTE_ADDR');  // It is recommended to send the client IP to limit access to a function to a specific address, not to everyone 
     
-            if($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp))){
-                throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
-            }
-
-            // ... other code
+    if($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp))){
+        throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
+    }
+    // ... other code
+    }
+}
 ```
