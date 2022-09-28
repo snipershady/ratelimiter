@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7741cbdd009dae111d60ef2cc14eacd1",
+    "content-hash": "9f26eeca6ef5808df51a9cce834b4e60",
     "packages": [
         {
             "name": "predis/predis",
@@ -1877,8 +1877,7 @@
     "platform": {
         "php": ">=8.1",
         "ext-apcu": "*",
-        "ext-redis": "*",
-        "ext-curl": "*"
+        "ext-redis": "*"
     },
     "platform-dev": [],
     "plugin-api-version": "2.2.0"
