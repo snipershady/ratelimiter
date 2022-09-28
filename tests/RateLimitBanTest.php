@@ -39,13 +39,13 @@ class RateLimitBanTest extends AbstractTestCase {
     public function setUp(): void {
         parent::setUp();
         $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
-        $this->redis->flushAll();
+        $this->redis->flushall();
         apcu_clear_cache();
     }
 
     public function tearDown(): void {
         parent::tearDown();
-        $this->redis->flushAll();
+        $this->redis->flushall();
         apcu_clear_cache();
     }
 
