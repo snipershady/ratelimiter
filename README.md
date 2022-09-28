@@ -32,7 +32,7 @@ class Foo(){
             $ttl = 3;           //The timeframe you want to limit access for
 
             if($limiter->isLimited($key, $limit, $ttl)){
-                throw new Exception("You've reached the limit");
+                throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
             }
 
             // ... other code
@@ -57,7 +57,7 @@ class Foo(){
             $ttl = 3;           //The timeframe you want to limit access for
 
             if($limiter->isLimited($key, $limit, $ttl)){
-                throw new Exception("You've reached the limit");
+                throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
             }
 
             // ... other code
