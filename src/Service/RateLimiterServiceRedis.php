@@ -57,7 +57,7 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService {
         // vorrei fare che se si supera maxAttempts allora il nuovo TTL sarà più grande di qualcosa passato in input o un moltiplicatore...
         
         $violationCountKey = "BAN_violation_count".$key . $clientIp;
-        $needBan = $this->redis->get($violationCountKey);
+        $needBan = (int) $this->redis->get($violationCountKey);
         if($needBan >= $maxAttempts){
             $ttl = $banTtl;
         }
