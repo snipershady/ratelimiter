@@ -41,32 +41,34 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService {
     public function isLimited(string $key, int $limit, int $ttl): bool {
         $this->checkKey($key);
         $this->checkTTL($ttl);
-        $actual = (int)($this->redis->transaction()->incr($key)->get($key)->execute())[0];
-        if($actual === 1){
-           $actual = (int) ($this->redis->transaction()->expire($key, $ttl)->get($key)->execute())[0];
+        $actualArray = ($this->redis->transaction()->incr($key)->get($key)->execute());
+        $actual = is_array($actualArray) && array_key_exists(0, $actualArray) ? (int) $actualArray[0] : 0;
+        if ($actual <= 1) {
+            $actual = (int) ($this->redis->transaction()->expire($key, $ttl)->get($key)->execute())[0];
         }
-        
-        if($actual > $limit){
-            return true;
-        }
-                
-        return false;
+
+        return($actual > $limit);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>The strategy with the Redis instance is more secure than APCu, because of the transaction that grants all-or-nothing execution</p>
+     */
     public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool {
-        // vorrei fare che se si supera maxAttempts allora il nuovo TTL sarà più grande di qualcosa passato in input o un moltiplicatore...
+        $this->checkTTL($banTtl);
+        $this->checkTimeFrame($banTimeFrame);
         
-        $violationCountKey = "BAN_violation_count".$key . $clientIp;
+        $violationCountKey = "BAN_violation_count" . $key . $clientIp;
         $needBan = (int) $this->redis->get($violationCountKey);
-        if($needBan >= $maxAttempts){
+        if ($needBan >= $maxAttempts) {
             $ttl = $banTtl;
         }
         $actual = $this->isLimited($key, $limit, $ttl);
-        
-        if($actual){
-            $check = (int)($this->redis->transaction()->incr($violationCountKey)->expire($violationCountKey, $banTimeFrame)->get($violationCountKey)->execute())[0];
+
+        if ($actual) {
+            $check = (int) ($this->redis->transaction()->incr($violationCountKey)->expire($violationCountKey, $banTimeFrame)->get($violationCountKey)->execute())[0];
         }
-        
+
         return $actual > $limit;
     }
 

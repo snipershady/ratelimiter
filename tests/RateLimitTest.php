@@ -34,10 +34,19 @@ class RateLimitTest extends AbstractTestCase {
 
     private int $port = 6379;
     private string $servername = "redis-server";
+    private Client $redis;
 
     public function setUp(): void {
         parent::setUp();
+        $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
+        $this->redis->flushAll();
         apcu_clear_cache();
+    }
+    
+    public function tearDown(): void {
+         parent::tearDown();
+         $this->redis->flushAll();
+         apcu_clear_cache();
     }
 
     public function testApcuTTLexpiration() {
@@ -77,8 +86,8 @@ class RateLimitTest extends AbstractTestCase {
         $limit = 2;
         $ttl = 3;
         $key = "test" . microtime(true);
-        $redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+        $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
 
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertFalse($result);
@@ -126,9 +135,9 @@ class RateLimitTest extends AbstractTestCase {
 
     public function testLimitRedis() {
         //$this->markTestSkipped();
-        $redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
+        $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
 
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = "test" . microtime(true);
         $limit = 2;
         $ttl = 3;
@@ -147,9 +156,9 @@ class RateLimitTest extends AbstractTestCase {
 
     public function testLimitRedisLimitOne() {
         //$this->markTestSkipped();
-        $redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
+        $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
 
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = "test" . microtime(true);
         $limit = 1;
         $ttl = 3;
@@ -168,9 +177,9 @@ class RateLimitTest extends AbstractTestCase {
 
     public function testLimitRedisLimitOneAgain() {
         //$this->markTestSkipped();
-        $redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
+        $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
 
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = "test" . microtime(true);
         $limit = 1;
         $ttl = 2;
@@ -192,9 +201,9 @@ class RateLimitTest extends AbstractTestCase {
 
     public function testLimitRedisLimitOneAgainTtlExpire() {
 
-        $redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
+        $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
 
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = "test" . microtime(true);
         $limit = 1;
         $ttl = 20;
@@ -202,20 +211,20 @@ class RateLimitTest extends AbstractTestCase {
 
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertFalse($result);
-        $currentTtl = $redis->ttl($key);
+        $currentTtl = $this->redis->ttl($key);
         $this->assertEquals($currentTtl, $ttl);
 
         sleep($sleep);
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertTrue($result);
-        $currentTtl = $redis->ttl($key);
+        $currentTtl = $this->redis->ttl($key);
         $this->assertEquals($currentTtl, ($ttl - $sleep));
     }
 
     public function testLimitRedisLimitOneAgainTtlExpireFiveSeconds() {
-        $redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
+        $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
 
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = "test" . microtime(true);
         $limit = 1;
         $ttl = 20;
@@ -223,13 +232,13 @@ class RateLimitTest extends AbstractTestCase {
 
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertFalse($result);
-        $currentTtl = $redis->ttl($key);
+        $currentTtl = $this->redis->ttl($key);
         $this->assertEquals($currentTtl, $ttl);
 
         sleep($sleep);
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertTrue($result);
-        $currentTtl = $redis->ttl($key);
+        $currentTtl = $this->redis->ttl($key);
         $this->assertEquals($currentTtl, ($ttl - $sleep));
     }
 

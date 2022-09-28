@@ -45,6 +45,9 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService {
 
         return $actual > $limit;
     }
-    
+
+    public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool  {
+        return false;
+    }
 
 }

@@ -43,7 +43,18 @@ abstract class AbstractRateLimiterService {
      */
     public abstract function isLimited(string $key, int $limit, int $ttl): bool;
     
-    public abstract function isLimitedWIthBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame): bool;
+    /**
+     * 
+     * @param string $key
+     * @param int $limit
+     * @param int $ttl
+     * @param int $maxAttempts
+     * @param int $banTimeFrame
+     * @param int $banTtl
+     * @param string|null $clientIp
+     * @return bool
+     */
+    public abstract function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool;
 
     /**
      * <p>Verify if <b>ttl</b> parameter is positive integer. Throws InvalidArgumentException</p>
@@ -53,6 +64,17 @@ abstract class AbstractRateLimiterService {
     protected function checkTTL(int $ttl): void {
         if ($ttl < 1) {
             throw new InvalidArgumentException("TTL must be positive integer $ttl given, instead");
+        }
+    }
+    
+    /**
+     * <p>Verify if <b>$timeFrame</b> parameter is positive integer. Throws InvalidArgumentException</p>
+     * @param int $timeFrame
+     * @throws InvalidArgumentException
+     */
+    protected function checkTimeFrame(int $timeFrame): void {
+        if ($timeFrame < 1) {
+            throw new InvalidArgumentException("TimeFrame must be positive integer $timeFrame given, instead");
         }
     }
 
