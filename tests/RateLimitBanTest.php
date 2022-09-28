@@ -49,27 +49,64 @@ class RateLimitBanTest extends AbstractTestCase {
         apcu_clear_cache();
     }
 
-    public function testRateLimitWithBanRedis() {
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
+    /*
+      public function testRateLimitWithBanRedis() {
+      $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
+      $key = "test" . microtime(true);
+      $limit = 1;
+      $maxAttempts = 3;
+      $ttl = 2;
+      $banTimeFrame = 4;
+      $banTtl = 4;
+      $clientIp = null;
+
+      $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+      $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+      $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+      $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+      $this->assertEquals($ttl, $this->redis->ttl($key));
+      var_dump($this->redis->ttl($key));
+      sleep(3); // let ttl expire to enable the ban ttl
+      $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+      var_dump($this->redis->ttl($key));
+      $this->assertEquals($banTtl, $this->redis->ttl($key));
+      sleep($banTtl + 1);
+      $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+      var_dump($this->redis->ttl($key));
+      $this->assertEquals($banTtl, $this->redis->ttl($key));
+      }
+     */
+
+    public function testRateLimitWithBanAPCu() {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
         $key = "test" . microtime(true);
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
         $banTimeFrame = 4;
-        $banTtl = 10; 
+        $banTtl = 5;
         $clientIp = null;
+
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result);
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertTrue($result);
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertTrue($result);
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertTrue($result);
         
+        sleep($ttl+1);
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result);
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertTrue($result);
+        $this->assertTrue(apcu_key_info($key)["ttl"] ===$banTtl) ;
+        sleep($ttl+1);
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
-        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
-        var_dump($this->redis->ttl($key));
+        $this->assertTrue($result);
+        $this->assertTrue(apcu_key_info($key)["ttl"] ===$banTtl) ;
         
-        sleep(3);
-        
-          $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
-        var_dump($this->redis->ttl($key));
-        $this->assertEquals(10, $this->redis->ttl($key));
     }
 
 }

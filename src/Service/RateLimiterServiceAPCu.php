@@ -46,8 +46,25 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService {
         return $actual > $limit;
     }
 
-    public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool  {
-        return false;
+    /**
+     * {@inheritDoc}
+     */
+    public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool {
+        $this->checkTTL($banTtl);
+        $this->checkTimeFrame($banTimeFrame);
+        $violationCountKey = "BAN_violation_count" . $key . $clientIp;
+        $needBan = (int) apcu_fetch($violationCountKey);
+
+        if ($needBan >= $maxAttempts) {
+            $ttl = $banTtl;
+        }
+        $actual = $this->isLimited($key, $limit, $ttl);
+        if ($actual) {
+            $step = 1;
+            $success = null;
+            apcu_inc($violationCountKey, $step, $success, $banTtl);
+        }
+        return $actual;
     }
 
 }
