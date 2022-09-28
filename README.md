@@ -24,8 +24,8 @@ use Predis\Client;
 use RateLimiter\Enum\CacheEnum;
 use RateLimiter\Service\AbstractRateLimiterService;
 
-class foo(){
-    public function ControllerYouWantToRateLimit(): Response {
+class Foo(){
+    public function controllerYouWantToRateLimit(): Response {
             $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
             $key = __METHOD__;  //Name of the function you want to rate limit. You can set a custom key. It's a String!
             $limit = 2;         //Maximum attempts before the limit
@@ -46,8 +46,8 @@ use Predis\Client;
 use RateLimiter\Enum\CacheEnum;
 use RateLimiter\Service\AbstractRateLimiterService;
 
-class foo(){
-    public function ControllerYouWantToRateLimit(): Response {
+class Foo(){
+    public function controllerYouWantToRateLimit(): Response {
             $serverIp = "192.168.0.100";        //The server where you've installed the Redis instance.
             $redis = new Client("tcp://$serverIp:6379?persistent=redis01"); // Example with persistent connection.
 
