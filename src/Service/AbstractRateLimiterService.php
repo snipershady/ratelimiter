@@ -29,29 +29,31 @@ use InvalidArgumentException;
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 abstract class AbstractRateLimiterService {
-    
+
     private function __construct() {
         
     }
 
     /**
      * 
-     * @param string $key <p>Name of the function you want to limit</p>
+     * @param string $key <p>Name of the function you want to limit. You can use __FUNCTION__ or __METHOD__ inside a subroutine to avoid collision</p>
      * @param int $limit <p>Limit</p>
      * @param int $ttl <p>Timeframe</p>
      * @return bool
      */
     public abstract function isLimited(string $key, int $limit, int $ttl): bool;
-    
+
     /**
-     * 
-     * @param string $key
-     * @param int $limit
-     * @param int $ttl
-     * @param int $maxAttempts
-     * @param int $banTimeFrame
-     * @param int $banTtl
-     * @param string|null $clientIp
+     * <p>Context: It is necessary to limit access to a specific function, but you are receiving more requests than you'd want to accept from the same client, so you want to punish the client more than the other
+     *    
+     * </p>
+     * @param string $key <p>Name of the function you want to limit. You can use __FUNCTION__ or __METHOD__ inside a subroutine to avoid collision</p>
+     * @param int $limit  <p>Limit</p>
+     * @param int $ttl <p>Timeframe</p>
+     * @param int $maxAttempts <p>Maximum attempts before a client will receive a ban</p>
+     * @param int $banTimeFrame <p>Timeframe during a client cannot be limited more than the max attempts number</p>
+     * @param int $banTtl <p>New timeframe for banished client</p>
+     * @param string|null $clientIp <p>Useful to ban a specific client from a function</p>
      * @return bool
      */
     public abstract function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool;
@@ -62,18 +64,18 @@ abstract class AbstractRateLimiterService {
      * @throws InvalidArgumentException
      */
     protected function checkTTL(int $ttl): void {
-        if ($ttl < 1) {
+        if (!$this->isPositiveNotZeroInteger($ttl)) {
             throw new InvalidArgumentException("TTL must be positive integer $ttl given, instead");
         }
     }
-    
+
     /**
      * <p>Verify if <b>$timeFrame</b> parameter is positive integer. Throws InvalidArgumentException</p>
      * @param int $timeFrame
      * @throws InvalidArgumentException
      */
     protected function checkTimeFrame(int $timeFrame): void {
-        if ($timeFrame < 1) {
+        if (!$this->isPositiveNotZeroInteger($timeFrame)) {
             throw new InvalidArgumentException("TimeFrame must be positive integer $timeFrame given, instead");
         }
     }
@@ -95,7 +97,7 @@ abstract class AbstractRateLimiterService {
      * @throws InvalidArgumentException
      */
     protected function checkStep(int $step): void {
-        if ($step < 1) {
+        if (!$this->isPositiveNotZeroInteger($step)) {
             throw new InvalidArgumentException("STEP must be positive integer $step given, instead");
         }
     }
@@ -114,6 +116,10 @@ abstract class AbstractRateLimiterService {
             case CacheEnum::REDIS;
                 return new RateLimiterServiceRedis($pRedisClient);
         }
+    }
+
+    private function isPositiveNotZeroInteger(int $value) {
+        return $value > 0;
     }
 
 }
