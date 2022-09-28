@@ -61,13 +61,13 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService {
         if($needBan >= $maxAttempts){
             $ttl = $banTtl;
         }
-        $check = $this->isLimited($key, $limit, $ttl);
+        $actual = $this->isLimited($key, $limit, $ttl);
         
-        if($check){
-            $actual = (int)($this->redis->transaction()->incr($violationCountKey)->expire($violationCountKey, $banTimeFrame)->get($violationCountKey)->execute())[0];
+        if($actual){
+            $check = (int)($this->redis->transaction()->incr($violationCountKey)->expire($violationCountKey, $banTimeFrame)->get($violationCountKey)->execute())[0];
         }
         
-        return $actual > $maxAttempts;
+        return $actual > $limit;
     }
 
 }
