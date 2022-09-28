@@ -17,6 +17,18 @@ For CLI usage, remember to edit your php.ini file to enable the APC extension
 apc.enable_cli="1"
 ```
 
+## Prerequisites
+To install the package you need at least the php-apcu and php-redis extension installed.
+To use the most secure strategy, with Redis, you need a Redis server installed and accessible.
+
+Debian - Ubuntu
+```bash
+apt-get install php8.1-redis php8.1-apcu
+```
+
+## Legacy PHP 5.6 version
+If you are a sad developer forced to still use a deprecated version of PHP, ask me in private, and I will release a legacy version of the package for you.
+
 ### APCu example:
 
 ```php
