@@ -65,19 +65,23 @@ class Foo(){
 }
 ```
 
-### Rate Limit with Ban option
+### Rate Limit with Ban option (example with Redis, but you can use APCu anyway
 ### With the b
 ```php
-    $serverIp = "192.168.0.100";        //The server where you've installed the Redis instance.
+    $serverIp = "192.168.0.100";    //The server where you've installed the Redis instance.
     $redis = new Client("tcp://$serverIp:6379?persistent=redis01"); // Example with persistent connection.
     $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-    $key = "test" . microtime(true);
-    $limit = 1;
+    $key = __METHOD__;  // Name of the function you want to rate limit. You can set a custom key. It's a String!
+    $limit = 1;         // Maximum attempts before the limit
     $maxAttempts = 3;   // Max number of attempts you want to allow in a timeframe
     $banTimeFrame = 4;  // Timeframe where maxAttempts should not be reached to avoid the ban
     $ttl = 2;           // The base timeframe you want to limit access for
     $banTtl = 4;        // If a limit is reached greater equals time of max attempts, the new timeframe limit will be 4 seconds
-    $clientIp = "127.0.0.1";   // It is recommended to send the client IP to limit access to a function to a specific address, not to everyone 
+    $clientIp = filter_input(INPUT_SERVER, 'REMOTE_ADDR');  // It is recommended to send the client IP to limit access to a function to a specific address, not to everyone 
+    
+            if($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp))){
+                throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
+            }
 
-    $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+            // ... other code
 ```
