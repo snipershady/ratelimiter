@@ -31,11 +31,15 @@ If you are a sad developer forced to still use a deprecated version of PHP, ask 
 
 ### APCu example:
 
+## Load dependencies 
 ```php
 use Predis\Client;
 use RateLimiter\Enum\CacheEnum;
 use RateLimiter\Service\AbstractRateLimiterService;
+```
 
+### APCu Example
+```php
 class Foo(){
     public function controllerYouWantToRateLimit(): Response {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
@@ -54,9 +58,6 @@ class Foo(){
 
 ### Redis Example
 ```php
-use Predis\Client;
-use RateLimiter\Enum\CacheEnum;
-use RateLimiter\Service\AbstractRateLimiterService;
 
 class Foo(){
     public function controllerYouWantToRateLimit(): Response {
@@ -77,7 +78,6 @@ class Foo(){
 ```
 
 ### Rate Limit with Ban option (example with Redis, but you can use APCu anyway
-### With the b
 ```php
 
 class Foo(){
