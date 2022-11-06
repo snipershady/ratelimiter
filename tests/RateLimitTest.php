@@ -49,7 +49,7 @@ class RateLimitTest extends AbstractTestCase {
         apcu_clear_cache();
     }
 
-    public function testApcuTTLexpiration() {
+    public function testApcuTTLexpiration(): void {
         //$this->markTestSkipped();
         $limit = 2;
         $ttl = 3;
@@ -81,7 +81,7 @@ class RateLimitTest extends AbstractTestCase {
         $this->assertTrue($result); // limit reached
     }
 
-    public function testRedisTTLexpiration() {
+    public function testRedisTTLexpiration(): void {
         //$this->markTestSkipped();
         $limit = 2;
         $ttl = 3;
@@ -114,7 +114,7 @@ class RateLimitTest extends AbstractTestCase {
         $this->assertTrue($result); // limit reached
     }
 
-    public function testLimitApcu() {
+    public function testLimitApcu(): void {
         //$this->markTestSkipped();
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
         $key = "test" . microtime(true);
@@ -133,7 +133,7 @@ class RateLimitTest extends AbstractTestCase {
         $this->assertTrue($countTrue === ($attempts - $limit));
     }
 
-    public function testLimitRedis() {
+    public function testLimitRedis(): void {
         //$this->markTestSkipped();
         $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
 
@@ -154,7 +154,7 @@ class RateLimitTest extends AbstractTestCase {
         $this->assertTrue($countTrue === ($attempts - $limit));
     }
 
-    public function testLimitRedisLimitOne() {
+    public function testLimitRedisLimitOne(): void {
         //$this->markTestSkipped();
 
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
@@ -174,7 +174,7 @@ class RateLimitTest extends AbstractTestCase {
         $this->assertTrue($countTrue === ($attempts - $limit));
     }
 
-    public function testLimitRedisLimitOneAgain() {
+    public function testLimitRedisLimitOneAgain(): void {
         //$this->markTestSkipped();
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = "test" . microtime(true);
@@ -196,7 +196,7 @@ class RateLimitTest extends AbstractTestCase {
         $this->assertTrue($result);
     }
 
-    public function testLimitRedisLimitOneAgainTtlExpire() {
+    public function testLimitRedisLimitOneAgainTtlExpire(): void {
         //$this->markTestSkipped();
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = "test" . microtime(true);
@@ -216,7 +216,7 @@ class RateLimitTest extends AbstractTestCase {
         $this->assertEquals($currentTtl, ($ttl - $sleep));
     }
 
-    public function testLimitRedisLimitOneAgainTtlExpireFiveSeconds() {
+    public function testLimitRedisLimitOneAgainTtlExpireFiveSeconds(): void {
         //$this->markTestSkipped();
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = "test" . microtime(true);
@@ -234,6 +234,50 @@ class RateLimitTest extends AbstractTestCase {
         $this->assertTrue($result);
         $currentTtl = $this->redis->ttl($key);
         $this->assertEquals($currentTtl, ($ttl - $sleep));
+    }
+
+    public function testLimitRedisAndDeleteKey(): void {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
+        $key = "test" . microtime(true);
+        $limit = 1;
+        $ttl = 60;
+        $sleep = 5;
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertFalse($result);
+        $currentTtl = $this->redis->ttl($key);
+        $this->assertEquals($currentTtl, $ttl);
+        sleep($sleep);
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertTrue($result);
+        $currentTtl = $this->redis->ttl($key);
+        $this->assertEquals($currentTtl, ($ttl - $sleep));
+        $limiter->clearRateLimitedKey($key);
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertFalse($result);
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertTrue($result);
+    }
+
+    public function testLimitApcuAndDeleteKey(): void {
+        //$this->markTestSkipped();
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+        $key = "test" . microtime(true);
+        $limit = 1;
+        $ttl = 60;
+        $sleep = 5;
+
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertFalse($result);
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertTrue($result);
+        sleep($sleep);
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertTrue($result);
+        $limiter->clearRateLimitedKey($key);
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertFalse($result);
+        $result = $limiter->isLimited($key, $limit, $ttl);
+        $this->assertTrue($result);
     }
 
 }

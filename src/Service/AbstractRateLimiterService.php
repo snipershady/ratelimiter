@@ -59,6 +59,13 @@ abstract class AbstractRateLimiterService {
     public abstract function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool;
 
     /**
+     * <p>Delete the limited key</p>
+     * @param string $key <p>key to set free from limiter</p>
+     * @return bool
+     */
+    public abstract function clearRateLimitedKey(string $key): bool;
+
+    /**
      * <p>Verify if <b>ttl</b> parameter is positive integer. Throws InvalidArgumentException</p>
      * @param int $ttl
      * @throws InvalidArgumentException

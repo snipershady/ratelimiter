@@ -67,4 +67,13 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService {
         return $actual;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    public function clearRateLimitedKey(string $key): bool {
+        $this->checkKey($key);
+        return apcu_delete($key);
+    }
+    
+
 }

@@ -72,4 +72,12 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService {
         return $actual;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    public function clearRateLimitedKey(string $key): bool {
+        $this->checkKey($key);
+        return (bool)$this->redis->del($key);
+    }
+
 }
