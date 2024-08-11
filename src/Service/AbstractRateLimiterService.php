@@ -114,7 +114,7 @@ abstract class AbstractRateLimiterService {
      * 
      * @param CacheEnum $cacheEnum
      * @param Client $pRedisClient
-     * @param AlgorithmStrategyEnum $strategyAlgos
+     * @param AlgorithmStrategyEnum $strategyAlgo
      * @return AbstractRateLimiterService
      */
     public static function factory(CacheEnum $cacheEnum, Client $pRedisClient = null, AlgorithmStrategyEnum $strategyAlgo = AlgorithmStrategyEnum::FIXED_WINDOW_COUNTER): AbstractRateLimiterService {
@@ -130,10 +130,11 @@ abstract class AbstractRateLimiterService {
         if ($strategyAlgo === AlgorithmStrategyEnum::SLIDING_LOG) {
             switch ($cacheEnum) {
                 case CacheEnum::APCU:
-                    return new RateLimiterServiceAPCu();
+                    //return new RateLimiterServiceAPCu();
+                    throw new InvalidArgumentException("To be implemented");
                 default:
                 case CacheEnum::REDIS;
-                    return new RateLimiterServiceRedis($pRedisClient);
+                    return new RateLimiterServiceRedisSlidingWindow($pRedisClient);
             }
         }
         
