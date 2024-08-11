@@ -39,9 +39,10 @@ class RateLimitTest extends AbstractTestCase {
     private Client $redis;
 
     public static function setUpBeforeClass(): void {
+        // errors will be handled as ErrorException
         set_error_handler(function ($errno, $errstr, $errfile, $errline) {
             // error was suppressed with the @-operator
-            if (0 === error_reporting()) {
+            if (error_reporting() === 0) {
                 return false;
             }
 

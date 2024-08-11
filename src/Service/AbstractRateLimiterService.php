@@ -2,9 +2,10 @@
 
 namespace RateLimiter\Service;
 
-use Predis\Client;
-use RateLimiter\Enum\CacheEnum;
 use InvalidArgumentException;
+use Predis\Client;
+use RateLimiter\Enum\AlgorithmStrategyEnum;
+use RateLimiter\Enum\CacheEnum;
 
 /*
  * Copyright (C) 2022 Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
@@ -113,20 +114,32 @@ abstract class AbstractRateLimiterService {
      * 
      * @param CacheEnum $cacheEnum
      * @param Client $pRedisClient
+     * @param AlgorithmStrategyEnum $strategyAlgos
      * @return AbstractRateLimiterService
      */
-    public static function factory(CacheEnum $cacheEnum, Client $pRedisClient = null): AbstractRateLimiterService {
-        switch ($cacheEnum) {
-            case CacheEnum::APCU:
-                return new RateLimiterServiceAPCu();
-            default:
-            case CacheEnum::REDIS;
-                return new RateLimiterServiceRedis($pRedisClient);
+    public static function factory(CacheEnum $cacheEnum, Client $pRedisClient = null, AlgorithmStrategyEnum $strategyAlgo = AlgorithmStrategyEnum::FIXED_WINDOW_COUNTER): AbstractRateLimiterService {
+        if ($strategyAlgo === AlgorithmStrategyEnum::FIXED_WINDOW_COUNTER) {
+            switch ($cacheEnum) {
+                case CacheEnum::APCU:
+                    return new RateLimiterServiceAPCu();
+                default:
+                case CacheEnum::REDIS;
+                    return new RateLimiterServiceRedis($pRedisClient);
+            }
         }
+        if ($strategyAlgo === AlgorithmStrategyEnum::SLIDING_LOG) {
+            switch ($cacheEnum) {
+                case CacheEnum::APCU:
+                    return new RateLimiterServiceAPCu();
+                default:
+                case CacheEnum::REDIS;
+                    return new RateLimiterServiceRedis($pRedisClient);
+            }
+        }
+        
     }
 
     private function isPositiveNotZeroInteger(int $value) {
         return $value > 0;
     }
-
 }
