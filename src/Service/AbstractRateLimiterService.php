@@ -113,11 +113,11 @@ abstract class AbstractRateLimiterService {
     /**
      * 
      * @param CacheEnum $cacheEnum
-     * @param Client $pRedisClient
-     * @param AlgorithmStrategyEnum $strategyAlgo
+     * @param Client|null $pRedisClient
+     * @param AlgorithmStrategyEnum|null $strategyAlgo
      * @return AbstractRateLimiterService
      */
-    public static function factory(CacheEnum $cacheEnum, Client $pRedisClient = null, AlgorithmStrategyEnum $strategyAlgo = AlgorithmStrategyEnum::FIXED_WINDOW_COUNTER): AbstractRateLimiterService {
+    public static function factory(CacheEnum $cacheEnum, ?Client $pRedisClient = null, ?AlgorithmStrategyEnum $strategyAlgo = AlgorithmStrategyEnum::FIXED_WINDOW_COUNTER): AbstractRateLimiterService {
         if ($strategyAlgo === AlgorithmStrategyEnum::FIXED_WINDOW_COUNTER) {
             switch ($cacheEnum) {
                 case CacheEnum::APCU:
@@ -130,14 +130,12 @@ abstract class AbstractRateLimiterService {
         if ($strategyAlgo === AlgorithmStrategyEnum::SLIDING_LOG) {
             switch ($cacheEnum) {
                 case CacheEnum::APCU:
-                    //return new RateLimiterServiceAPCu();
-                    throw new InvalidArgumentException("To be implemented");
+                    return new RateLimiterServiceAPCuSlidingWindow();
                 default:
                 case CacheEnum::REDIS;
                     return new RateLimiterServiceRedisSlidingWindow($pRedisClient);
             }
         }
-        
     }
 
     private function isPositiveNotZeroInteger(int $value) {

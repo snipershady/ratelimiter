@@ -22,64 +22,58 @@ use Predis\Client;
  */
 
 /**
- * Description of RateLimiterServiceRedisSlidingWindow
+ * Description of RateLimiterServiceAPCuSlidingWindow
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-class RateLimiterServiceRedisSlidingWindow extends AbstractRateLimiterService {
-
-    private Client $redis;
-
-    public function __construct(Client $redis) {
-        $this->redis = $redis;
-    }
+class RateLimiterServiceAPCuSlidingWindow extends AbstractRateLimiterService {
 
     /**
      * {@inheritDoc}
-     * <p>The strategy with the Redis instance is more secure than APCu, because of the transaction that grants all-or-nothing execution</p>
      */
     public function isLimited(string $key, int $limit, int $ttl): bool {
-
         $now = microtime(true) * 1000; // Timestamp in millisecondi
-        // begin transaction
-        $transaction = $this->redis->transaction();
+        // Recupera il set di timestamp dalla cache
+        $timestamps = apcu_fetch($key);
+        if ($timestamps === false) {
+            $timestamps = [];
+        }
 
-        // Add current timestamp to the set identified by the key
-        $transaction->zadd($key, $now, $now);
+        // Aggiungi il timestamp corrente
+        $timestamps[] = $now;
 
-        // Remove all old timestamps, throwing them through the window
-        $transaction->zremrangebyscore($key, '-inf', $now - $ttl);
+        // Rimuovi i timestamp più vecchi del TTL
+        $timestamps = array_filter($timestamps, function ($timestamp) use ($now, $ttl) {
+            return $timestamp >= ($now - $ttl);
+        });
 
-        // check if limit is reached (this is the 3rd command in transaction, so position [2] of the array result
-        $transaction->zcard($key);
+        // Conta il numero di timestamp rimanenti
+        $count = count($timestamps);
 
-        // Exec transaction
-        $result = $transaction->execute();
+        // Memorizza nuovamente il set aggiornato nella cache
+        apcu_store($key, $timestamps, $ttl / 1000); // TTL in secondi
 
-        $count = (int) $result[2];
-
-        return !empty($result) && $count > $limit;
+        return $count > $limit;
     }
 
     /**
      * {@inheritDoc}
-     * <p>The strategy with the Redis instance is more secure than APCu, because of the transaction that grants all-or-nothing execution</p>
      */
     public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool {
         $this->checkTTL($banTtl);
         $this->checkTimeFrame($banTimeFrame);
-
         $violationCountKey = "BAN_violation_count" . $key . $clientIp;
-        $needBan = (int) $this->redis->get($violationCountKey);
+        $needBan = (int) apcu_fetch($violationCountKey);
+
         if ($needBan >= $maxAttempts) {
             $ttl = $banTtl;
         }
         $actual = $this->isLimited($key, $limit, $ttl);
-
         if ($actual) {
-            $this->redis->transaction()->incr($violationCountKey)->expire($violationCountKey, $banTtl)->get($violationCountKey)->execute();
+            $step = 1;
+            $success = null;
+            apcu_inc($violationCountKey, $step, $success, $banTtl);
         }
-
         return $actual;
     }
 
