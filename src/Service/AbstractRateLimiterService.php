@@ -122,8 +122,8 @@ abstract class AbstractRateLimiterService {
             switch ($cacheEnum) {
                 case CacheEnum::APCU:
                     return new RateLimiterServiceAPCu();
+                case CacheEnum::REDIS:
                 default:
-                case CacheEnum::REDIS;
                     return new RateLimiterServiceRedis($pRedisClient);
             }
         }
@@ -131,8 +131,8 @@ abstract class AbstractRateLimiterService {
             switch ($cacheEnum) {
                 case CacheEnum::APCU:
                     return new RateLimiterServiceAPCuSlidingWindow();
+                case CacheEnum::REDIS:
                 default:
-                case CacheEnum::REDIS;
                     return new RateLimiterServiceRedisSlidingWindow($pRedisClient);
             }
         }
