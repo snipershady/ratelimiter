@@ -43,9 +43,7 @@ class RateLimiterServiceAPCuSlidingWindow extends AbstractRateLimiterService {
         $timestamps[] = $now;
 
         // Rimuovi i timestamp più vecchi del TTL
-        $timestamps = array_filter($timestamps, function ($timestamp) use ($now, $ttl) {
-            return $timestamp >= ($now - $ttl);
-        });
+        $timestamps = array_filter($timestamps, fn($timestamp) => $timestamp >= ($now - $ttl));
 
         // Conta il numero di timestamp rimanenti
         $count = count($timestamps);

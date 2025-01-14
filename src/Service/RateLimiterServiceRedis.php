@@ -28,10 +28,8 @@ use Predis\Client;
  */
 class RateLimiterServiceRedis extends AbstractRateLimiterService {
 
-    private Client $redis;
-
-    public function __construct(Client $redis) {
-        $this->redis = $redis;
+    public function __construct(private readonly Client $redis)
+    {
     }
 
     /**
