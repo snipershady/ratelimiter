@@ -23,7 +23,9 @@ To use the most secure strategy, with Redis, you need a Redis server installed a
 
 Debian - Ubuntu
 ```bash
-apt-get install php8.1-redis php8.1-apcu
+apt-get install php8.3-redis php8.3-apcu
+# you can install php-redis and php-apcu module for the version you've installed on the system
+# min version required 8.2
 ```
 
 ## Legacy PHP 5.6 version
