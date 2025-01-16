@@ -125,8 +125,12 @@ abstract class AbstractRateLimiterService {
         }
     }
 
-    private function isPositiveNotZeroInteger(int $value) {
+    /**
+     * 
+     * @param int $value
+     * @return bool
+     */
+    private function isPositiveNotZeroInteger(int $value): bool {
         return $value > 0;
     }
-
 }

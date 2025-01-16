@@ -38,7 +38,7 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService {
         if (empty(apcu_exists($key))) {
             $actual = apcu_inc($key, $step, $success, $ttl);
         } else {
-            $current = apcu_fetch($key);
+            $current = (int) apcu_fetch($key);
             $actual = $current + 1;
             apcu_cas($key, $current, $actual);
         }
@@ -74,6 +74,4 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService {
         $this->checkKey($key);
         return apcu_delete($key);
     }
-    
-
 }
