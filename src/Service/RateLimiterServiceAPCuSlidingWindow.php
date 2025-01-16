@@ -80,6 +80,6 @@ class RateLimiterServiceAPCuSlidingWindow extends AbstractRateLimiterService {
      */
     public function clearRateLimitedKey(string $key): bool {
         $this->checkKey($key);
-        return (bool) $this->redis->del($key);
+        return apcu_delete($key);
     }
 }

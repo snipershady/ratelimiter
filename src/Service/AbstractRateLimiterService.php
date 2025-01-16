@@ -136,9 +136,15 @@ abstract class AbstractRateLimiterService {
                     return new RateLimiterServiceRedisSlidingWindow($pRedisClient);
             }
         }
+        return new RateLimiterServiceRedis($pRedisClient);
     }
 
-    private function isPositiveNotZeroInteger(int $value) {
+    /**
+     * 
+     * @param int $value
+     * @return bool
+     */
+    private function isPositiveNotZeroInteger(int $value): bool {
         return $value > 0;
     }
 }
