@@ -14,7 +14,7 @@ return static function (RectorConfig $rectorConfig): void {
         __DIR__ . '/src'
     ]);
 
-    $rectorConfig->phpVersion(PhpVersion::PHP_83);
+    $rectorConfig->phpVersion(PhpVersion::PHP_84);
 
     $rectorConfig->sets([
         DoctrineSetList::ANNOTATIONS_TO_ATTRIBUTES,
@@ -26,6 +26,6 @@ return static function (RectorConfig $rectorConfig): void {
         SymfonySetList::SYMFONY_CONSTRUCTOR_INJECTION,
         SymfonySetList::SYMFONY_72,
         SensiolabsSetList::ANNOTATIONS_TO_ATTRIBUTES,
-        LevelSetList::UP_TO_PHP_83
+        LevelSetList::UP_TO_PHP_84
     ]);
 };

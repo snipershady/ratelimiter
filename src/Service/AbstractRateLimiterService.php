@@ -115,7 +115,7 @@ abstract class AbstractRateLimiterService {
      * @param Client $pRedisClient
      * @return AbstractRateLimiterService
      */
-    public static function factory(CacheEnum $cacheEnum, Client $pRedisClient = null): AbstractRateLimiterService {
+    public static function factory(CacheEnum $cacheEnum, ?Client $pRedisClient = null): AbstractRateLimiterService {
         switch ($cacheEnum) {
             case CacheEnum::APCU:
                 return new RateLimiterServiceAPCu();
