@@ -3,29 +3,42 @@
 declare(strict_types=1);
 
 use Rector\Config\RectorConfig;
-use Rector\Doctrine\Set\DoctrineSetList;
+use Rector\Php83\Rector\ClassMethod\AddOverrideAttributeToOverriddenMethodsRector;
+use Rector\Php84\Rector\Param\ExplicitNullableParamTypeRector;
 use Rector\Set\ValueObject\LevelSetList;
-use Rector\Symfony\Set\SensiolabsSetList;
-use Rector\Symfony\Set\SymfonySetList;
+use Rector\TypeDeclaration\Rector\ClassMethod\ReturnTypeFromStrictNativeCallRector;
 use Rector\ValueObject\PhpVersion;
 
-return static function (RectorConfig $rectorConfig): void {
-    $rectorConfig->paths([
-        __DIR__ . '/src'
-    ]);
-
-    $rectorConfig->phpVersion(PhpVersion::PHP_84);
-
-    $rectorConfig->sets([
-        DoctrineSetList::ANNOTATIONS_TO_ATTRIBUTES,
-        DoctrineSetList::DOCTRINE_BUNDLE_210,
-        DoctrineSetList::DOCTRINE_DBAL_30,
-        DoctrineSetList::DOCTRINE_ORM_29,
-        SymfonySetList::ANNOTATIONS_TO_ATTRIBUTES,
-        SymfonySetList::SYMFONY_CODE_QUALITY,
-        SymfonySetList::SYMFONY_CONSTRUCTOR_INJECTION,
-        SymfonySetList::SYMFONY_72,
-        SensiolabsSetList::ANNOTATIONS_TO_ATTRIBUTES,
-        LevelSetList::UP_TO_PHP_84
-    ]);
-};
+return RectorConfig::configure()
+                ->withPaths([
+                    __DIR__ . '/src',
+                ])
+                ->withPreparedSets(
+                //deadCode: true,
+                //codeQuality: true,
+                //codingStyle: true,
+                //naming: true,
+                //privatization: true,
+                //typeDeclarations: true,
+                //rectorPreset: true
+                )
+                ->withPhpSets(php84: true)
+                ->withPhpVersion(PhpVersion::PHP_84)
+                ->withAttributesSets(symfony: true, doctrine: true)
+                ->withComposerBased(twig: true, doctrine: true, phpunit: true, symfony: true)
+                ->withSets(
+                        [
+                            LevelSetList::UP_TO_PHP_84
+                        ]
+                )
+                ->withRules(
+                        [
+                            ExplicitNullableParamTypeRector::class,
+                            AddOverrideAttributeToOverriddenMethodsRector::class,
+                            //ReturnTypeFromStrictNativeCallRector::class
+                        ]
+                )
+->withTypeCoverageLevel(50)
+->withDeadCodeLevel(15)
+->withCodeQualityLevel(50)
+;
