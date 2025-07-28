@@ -28,7 +28,7 @@ use RateLimiter\Service\AbstractRateLimiterService;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  * 
- * @example ./vendor/phpunit/phpunit/phpunit --verbose tests/RateLimitBanTest.php 
+ * @example ./vendor/bin/phpunit tests/RateLimitBanTest.php
  */
 class RateLimitBanTest extends AbstractTestCase {
 

@@ -30,7 +30,7 @@ use RateLimiter\Service\AbstractRateLimiterService;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  * 
- * @example ./vendor/phpunit/phpunit/phpunit --verbose tests/RateLimitTest.php 
+ * @example ./vendor/bin/phpunit tests/RateLimitTest.php 
  */
 class RateLimitTest extends AbstractTestCase {
 
