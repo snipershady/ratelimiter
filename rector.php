@@ -23,8 +23,8 @@ return RectorConfig::configure()
                     NewMethodCallWithoutParenthesesRector::class,
                     UnusedForeachValueToArrayKeysRector::class,
                         //RemoveUnusedForeachKeyRector::class,
-                        //RemoveUselessParamTagRector::class,
-                        //RemoveUselessReturnTagRector::class
+                        RemoveUselessParamTagRector::class,
+                        RemoveUselessReturnTagRector::class
                         //SimplifyUselessVariableRector::class
                 ])
                 ->withPreparedSets(

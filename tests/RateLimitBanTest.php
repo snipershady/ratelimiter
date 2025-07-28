@@ -49,7 +49,7 @@ class RateLimitBanTest extends AbstractTestCase {
         apcu_clear_cache();
     }
 
-    public function testRateLimitWithBanRedis() {
+    public function testRateLimitWithBanRedis(): void {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = "test" . microtime(true);
         $limit = 1;
@@ -76,7 +76,7 @@ class RateLimitBanTest extends AbstractTestCase {
         $this->assertFalse($result);
     }
 
-    public function testRateLimitWithBaRedis() {
+    public function testRateLimitWithBaRedis(): void {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = "test" . microtime(true);
         $limit = 1;
@@ -109,7 +109,7 @@ class RateLimitBanTest extends AbstractTestCase {
         $this->assertFalse($result);
     }
 
-    public function testRateLimitWithBanAPCu() {
+    public function testRateLimitWithBanAPCu(): void {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
         $key = "test" . microtime(true);
         $limit = 1;

@@ -39,7 +39,7 @@ class RateLimitTest extends AbstractTestCase {
     private Client $redis;
 
     public static function setUpBeforeClass(): void {
-        set_error_handler(function ($errno, $errstr, $errfile, $errline) {
+        set_error_handler(function ($errno, $errstr, $errfile, $errline): false {
             // error was suppressed with the @-operator
             if (0 === error_reporting()) {
                 return false;
@@ -146,7 +146,7 @@ class RateLimitTest extends AbstractTestCase {
         for ($i = 0; $i < $attempts; $i++) {
             $result = $limiter->isLimited($key, $limit, $ttl);
             $countFalse = $result === false ? $countFalse + 1 : $countFalse;
-            $countTrue = $result === true ? $countTrue + 1 : $countTrue;
+            $countTrue = $result ? $countTrue + 1 : $countTrue;
         }
         //echo $countFalse;
         $this->assertTrue($countFalse === $limit);
@@ -167,7 +167,7 @@ class RateLimitTest extends AbstractTestCase {
         for ($i = 0; $i < $attempts; $i++) {
             $result = $limiter->isLimited($key, $limit, $ttl);
             $countFalse = $result === false ? $countFalse + 1 : $countFalse;
-            $countTrue = $result === true ? $countTrue + 1 : $countTrue;
+            $countTrue = $result ? $countTrue + 1 : $countTrue;
         }
         //echo $countFalse;
         $this->assertTrue($countFalse === $limit);
@@ -187,7 +187,7 @@ class RateLimitTest extends AbstractTestCase {
         for ($i = 0; $i < $attempts; $i++) {
             $result = $limiter->isLimited($key, $limit, $ttl);
             $countFalse = $result === false ? $countFalse + 1 : $countFalse;
-            $countTrue = $result === true ? $countTrue + 1 : $countTrue;
+            $countTrue = $result ? $countTrue + 1 : $countTrue;
         }
         //echo $countFalse;
         $this->assertTrue($countFalse === $limit);
