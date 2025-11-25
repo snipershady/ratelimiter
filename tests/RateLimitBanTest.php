@@ -2,6 +2,7 @@
 
 namespace RateLimiter\Tests;
 
+use Override;
 use Predis\Client;
 use RateLimiter\Enum\CacheEnum;
 use RateLimiter\Service\AbstractRateLimiterService;
@@ -36,6 +37,7 @@ class RateLimitBanTest extends AbstractTestCase {
     private string $servername = "redis-server";
     private Client $redis;
 
+    #[Override]
     public function setUp(): void {
         parent::setUp();
         $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
@@ -43,6 +45,7 @@ class RateLimitBanTest extends AbstractTestCase {
         apcu_clear_cache();
     }
 
+    #[Override]
     public function tearDown(): void {
         parent::tearDown();
         $this->redis->flushall();

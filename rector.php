@@ -21,10 +21,10 @@ return RectorConfig::configure()
                 ->withSkip([
                     //InlineClassRoutePrefixRector::class,
                     NewMethodCallWithoutParenthesesRector::class,
-                    UnusedForeachValueToArrayKeysRector::class,
+                        //UnusedForeachValueToArrayKeysRector::class,
                         //RemoveUnusedForeachKeyRector::class,
-                        RemoveUselessParamTagRector::class,
-                        RemoveUselessReturnTagRector::class
+                        //RemoveUselessParamTagRector::class,
+                        //RemoveUselessReturnTagRector::class
                         //SimplifyUselessVariableRector::class
                 ])
                 ->withPreparedSets(
@@ -55,4 +55,5 @@ return RectorConfig::configure()
                 ->withTypeCoverageLevel(50)
                 ->withDeadCodeLevel(50)
                 ->withCodeQualityLevel(50)
+                //->withCodingStyleLevel(24) // use php-csfix instead
 ;

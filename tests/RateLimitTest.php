@@ -4,6 +4,7 @@ namespace RateLimiter\Tests;
 
 use ErrorException;
 use Exception;
+use Override;
 use Predis\Client;
 use RateLimiter\Enum\CacheEnum;
 use RateLimiter\Service\AbstractRateLimiterService;
@@ -38,6 +39,7 @@ class RateLimitTest extends AbstractTestCase {
     private string $servername = "redis-server";
     private Client $redis;
 
+    #[Override]
     public static function setUpBeforeClass(): void {
         set_error_handler(function ($errno, $errstr, $errfile, $errline): false {
             // error was suppressed with the @-operator
@@ -56,6 +58,7 @@ class RateLimitTest extends AbstractTestCase {
         }
     }
 
+    #[Override]
     public function setUp(): void {
         parent::setUp();
         $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
@@ -63,6 +66,7 @@ class RateLimitTest extends AbstractTestCase {
         apcu_clear_cache();
     }
 
+    #[Override]
     public function tearDown(): void {
         parent::tearDown();
         $this->redis->flushall();

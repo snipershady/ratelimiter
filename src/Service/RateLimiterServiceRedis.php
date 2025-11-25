@@ -26,17 +26,19 @@ use Predis\Client;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-class RateLimiterServiceRedis extends AbstractRateLimiterService {
+class RateLimiterServiceRedis extends AbstractRateLimiterService
+{
+    public function __construct(private readonly Client $redis)
+    {
 
-    public function __construct(private readonly Client $redis) {
-        
     }
 
     /**
      * {@inheritDoc}
      * <p>The strategy with the Redis instance is more secure than APCu, because of the transaction that grants all-or-nothing execution</p>
      */
-    public function isLimited(string $key, int $limit, int $ttl): bool {
+    public function isLimited(string $key, int $limit, int $ttl): bool
+    {
         $this->checkKey($key);
         $this->checkTTL($ttl);
         $actualArray = ($this->redis->transaction()->incr($key)->get($key)->execute());
@@ -52,7 +54,8 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService {
      * {@inheritDoc}
      * <p>The strategy with the Redis instance is more secure than APCu, because of the transaction that grants all-or-nothing execution</p>
      */
-    public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool {
+    public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool
+    {
         $this->checkTTL($banTtl);
         $this->checkTimeFrame($banTimeFrame);
 
@@ -73,7 +76,8 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService {
     /**
      * {@inheritDoc}
      */
-    public function clearRateLimitedKey(string $key): bool {
+    public function clearRateLimitedKey(string $key): bool
+    {
         $this->checkKey($key);
         return (bool) $this->redis->del($key);
     }
