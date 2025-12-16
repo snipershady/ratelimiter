@@ -53,6 +53,8 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
 
     /**
      * {@inheritDoc}
+     *
+     *
      * <p>The strategy with the Redis instance is more secure than APCu, because of the transaction that grants all-or-nothing execution</p>
      */
     #[\Override]
