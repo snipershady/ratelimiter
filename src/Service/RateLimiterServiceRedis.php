@@ -37,6 +37,7 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
      * {@inheritDoc}
      * <p>The strategy with the Redis instance is more secure than APCu, because of the transaction that grants all-or-nothing execution</p>
      */
+    #[\Override]
     public function isLimited(string $key, int $limit, int $ttl): bool
     {
         $this->checkKey($key);
@@ -54,6 +55,7 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
      * {@inheritDoc}
      * <p>The strategy with the Redis instance is more secure than APCu, because of the transaction that grants all-or-nothing execution</p>
      */
+    #[\Override]
     public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool
     {
         $this->checkTTL($banTtl);
@@ -76,6 +78,7 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
     /**
      * {@inheritDoc}
      */
+    #[\Override]
     public function clearRateLimitedKey(string $key): bool
     {
         $this->checkKey($key);

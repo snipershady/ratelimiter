@@ -35,5 +35,43 @@
         "phpunit/phpunit": "^12.1",
         "phpstan/phpstan": "^2.1",
         "rector/rector": "^2.1.2"
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "rector": "vendor/bin/rector process",
+        "rector-dry": "vendor/bin/rector process --dry-run",
+        "cs-fix": "vendor/bin/php-cs-fixer fix",
+        "cs-check": "vendor/bin/php-cs-fixer fix --dry-run --diff",
+        "phpstan": "vendor/bin/phpstan analyse",
+        "quality": [
+            "@rector",
+            "@cs-fix"
+        ],
+        "quality-check": [
+            "@rector-dry",
+            "@cs-check",
+            "@phpstan"
+        ],
+        "post-install-cmd": [
+            "echo \"\n✅ Dependencies installed. Run 'composer quality' to apply code quality fixes.\n\""
+        ],
+        "post-update-cmd": [
+            "echo \"\n✅ Dependencies updated. Run 'composer quality' to apply code quality fixes.\n\""
+        ]
+    },
+    "scripts-descriptions": {
+        "test": "Run PHPUnit tests",
+        "rector": "Run Rector to refactor code",
+        "rector-dry": "Run Rector in dry-run mode (preview changes without applying)",
+        "cs-fix": "Fix code style issues with PHP-CS-Fixer",
+        "cs-check": "Check code style without making changes",
+        "phpstan": "Run PHPStan static analysis",
+        "quality": "Run all quality tools (Rector + PHP-CS-Fixer)",
+        "quality-check": "Check code quality without making changes (dry-run mode)"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "preferred-install": "dist"
     }
 }

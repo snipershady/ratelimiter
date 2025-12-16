@@ -29,6 +29,7 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     /**
      * {@inheritDoc}
      */
+    #[\Override]
     public function isLimited(string $key, int $limit, int $ttl): bool
     {
         $this->checkKey($key);
@@ -50,6 +51,7 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     /**
      * {@inheritDoc}
      */
+    #[\Override]
     public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool
     {
         $this->checkTTL($banTtl);
@@ -72,6 +74,7 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     /**
      * {@inheritDoc}
      */
+    #[\Override]
     public function clearRateLimitedKey(string $key): bool
     {
         $this->checkKey($key);
