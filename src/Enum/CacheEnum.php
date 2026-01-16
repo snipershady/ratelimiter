@@ -20,7 +20,7 @@ namespace RateLimiter\Enum;
  */
 
 /**
- * Description of CacheEnum
+ * Description of CacheEnum.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
@@ -28,5 +28,5 @@ enum CacheEnum: int
 {
     case APCU = 1;
     case REDIS = 2;
-
+    case PHP_REDIS = 3;
 }

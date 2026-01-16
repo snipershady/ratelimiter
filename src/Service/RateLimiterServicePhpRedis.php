@@ -2,8 +2,6 @@
 
 namespace RateLimiter\Service;
 
-use Predis\Client;
-
 /*
  * Copyright (C) 2022 Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  *
@@ -26,9 +24,9 @@ use Predis\Client;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-class RateLimiterServiceRedis extends AbstractRateLimiterService
+class RateLimiterServicePhpRedis extends AbstractRateLimiterService
 {
-    public function __construct(private readonly Client $redis)
+    public function __construct(private readonly \Redis $redis)
     {
     }
 
@@ -41,10 +39,10 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
     {
         $this->checkKey($key);
         $this->checkTTL($ttl);
-        $actualArray = $this->redis->transaction()->incr($key)->get($key)->execute();
+        $actualArray = $this->redis->multi()->incr($key)->get($key)->exec();
         $actual = is_array($actualArray) && array_key_exists(0, $actualArray) ? (int) $actualArray[0] : 0;
         if ($actual <= 1) {
-            $actual = (int) $this->redis->transaction()->expire($key, $ttl)->get($key)->execute()[0];
+            $actual = (int) $this->redis->multi()->expire($key, $ttl)->get($key)->exec()[0];
         }
 
         return $actual > $limit;
@@ -69,7 +67,7 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
         $actual = $this->isLimited($key, $limit, $ttl);
 
         if ($actual) {
-            $this->redis->transaction()->incr($violationCountKey)->expire($violationCountKey, $banTtl)->get($violationCountKey)->execute();
+            $this->redis->multi()->incr($violationCountKey)->expire($violationCountKey, $banTtl)->get($violationCountKey)->exec();
         }
 
         return $actual;

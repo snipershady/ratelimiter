@@ -20,15 +20,12 @@ namespace RateLimiter\Service;
  */
 
 /**
- * Description of RatelimiterService
+ * Description of RatelimiterService.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 class RateLimiterServiceAPCu extends AbstractRateLimiterService
 {
-    /**
-     * {@inheritDoc}
-     */
     #[\Override]
     public function isLimited(string $key, int $limit, int $ttl): bool
     {
@@ -48,15 +45,12 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         return $actual > $limit;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     #[\Override]
     public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool
     {
         $this->checkTTL($banTtl);
         $this->checkTimeFrame($banTimeFrame);
-        $violationCountKey = "BAN_violation_count" . $key . $clientIp;
+        $violationCountKey = 'BAN_violation_count'.$key.$clientIp;
         $needBan = (int) apcu_fetch($violationCountKey);
 
         if ($needBan >= $maxAttempts) {
@@ -68,16 +62,15 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
             $success = null;
             apcu_inc($violationCountKey, $step, $success, $banTtl);
         }
+
         return $actual;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     #[\Override]
     public function clearRateLimitedKey(string $key): bool
     {
         $this->checkKey($key);
+
         return apcu_delete($key);
     }
 }

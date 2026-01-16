@@ -2,7 +2,7 @@
 
 namespace RateLimiter\Tests;
 
-require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__.'/../vendor/autoload.php';
 
 use PHPUnit\Framework\TestCase;
 
@@ -24,10 +24,10 @@ use PHPUnit\Framework\TestCase;
  */
 
 /**
- * Description of AbstractTestCase
+ * Description of AbstractTestCase.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-abstract class AbstractTestCase extends TestCase {
-    
+abstract class AbstractTestCase extends TestCase
+{
 }

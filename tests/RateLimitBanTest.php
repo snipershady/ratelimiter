@@ -2,7 +2,6 @@
 
 namespace RateLimiter\Tests;
 
-use Override;
 use Predis\Client;
 use RateLimiter\Enum\CacheEnum;
 use RateLimiter\Service\AbstractRateLimiterService;
@@ -25,36 +24,39 @@ use RateLimiter\Service\AbstractRateLimiterService;
  */
 
 /**
- * Description of AbstractTestCase
+ * Description of AbstractTestCase.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
- * 
+ *
  * @example ./vendor/bin/phpunit tests/RateLimitBanTest.php
  */
-class RateLimitBanTest extends AbstractTestCase {
-
+class RateLimitBanTest extends AbstractTestCase
+{
     private int $port = 6379;
-    private string $servername = "redis-server";
+    private string $servername = 'redis-server';
     private Client $redis;
 
-    #[Override]
-    public function setUp(): void {
+    #[\Override]
+    public function setUp(): void
+    {
         parent::setUp();
         $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
         $this->redis->flushall();
         apcu_clear_cache();
     }
 
-    #[Override]
-    public function tearDown(): void {
+    #[\Override]
+    public function tearDown(): void
+    {
         parent::tearDown();
         $this->redis->flushall();
         apcu_clear_cache();
     }
 
-    public function testRateLimitWithBanRedis(): void {
+    public function testRateLimitWithBanRedis(): void
+    {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = "test" . microtime(true);
+        $key = 'test'.microtime(true);
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -72,16 +74,17 @@ class RateLimitBanTest extends AbstractTestCase {
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
 
         $this->assertEquals($banTtl, $this->redis->ttl($key));
-        sleep($banTtl + 1); //let expire ban ttl
+        sleep($banTtl + 1); // let expire ban ttl
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
-        
+
         $this->assertEquals($ttl, $this->redis->ttl($key)); // ttl is again the nominal value not banned
         $this->assertFalse($result);
     }
 
-    public function testRateLimitWithBaRedis(): void {
+    public function testRateLimitWithBaRedis(): void
+    {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = "test" . microtime(true);
+        $key = 'test'.microtime(true);
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -112,9 +115,10 @@ class RateLimitBanTest extends AbstractTestCase {
         $this->assertFalse($result);
     }
 
-    public function testRateLimitWithBanAPCu(): void {
+    public function testRateLimitWithBanAPCu(): void
+    {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = "test" . microtime(true);
+        $key = 'test'.microtime(true);
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -136,11 +140,10 @@ class RateLimitBanTest extends AbstractTestCase {
         $this->assertFalse($result);
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
         $this->assertTrue($result);
-        $this->assertTrue(apcu_key_info($key)["ttl"] === $banTtl);
+        $this->assertTrue(apcu_key_info($key)['ttl'] === $banTtl);
         sleep($ttl + 1);
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
         $this->assertTrue($result);
-        $this->assertTrue(apcu_key_info($key)["ttl"] === $banTtl);
+        $this->assertTrue(apcu_key_info($key)['ttl'] === $banTtl);
     }
-
 }
