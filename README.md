@@ -1,39 +1,99 @@
-# ratelimiter
-A free and easy-to-use rate limiter
+# Rate Limiter
+
+[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.2-8892BF.svg)](https://php.net/)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
+[![Packagist](https://img.shields.io/packagist/v/snipershady/ratelimiter.svg)](https://packagist.org/packages/snipershady/ratelimiter)
+
+A free and easy-to-use rate limiter for PHP applications.
 
 ## Context
-You need to limit network traffic access to a specific function in a specific timeframe.
-Rate limiting may help to stop some kinds of malicious activity.
 
+You need to limit network traffic access to a specific function in a specific timeframe.
+Rate limiting may help to stop some kinds of malicious activity such as brute force attacks, DDoS, and API abuse.
+
+## Installation
 
 ```bash
 composer require snipershady/ratelimiter
 ```
 
-## Command Line Interface (CLI)
-For CLI usage, remember to edit your php.ini file to enable the APC extension
+## Requirements
 
-```bash
-apc.enable_cli="1"
-```
+| Requirement | Version |
+|-------------|---------|
+| PHP | >= 8.2 |
+| ext-apcu | * |
+| ext-redis | * |
+| predis/predis | ^3.2 |
 
-## Prerequisites
-To install the package you need at least the php-apcu and php-redis extension installed.
-To use the most secure strategy, with Redis, you need a Redis server installed and accessible.
+### Debian / Ubuntu
 
-Debian - Ubuntu
 ```bash
 apt-get install php8.4-redis php8.4-apcu
-# you can install php-redis and php-apcu module for the version you've installed on the system
-# min version required 8.2
+# You can install php-redis and php-apcu module for the version you've installed on the system
+# Minimum PHP version required: 8.2
 ```
 
-## Legacy PHP 5.6 version
-If you are a sad developer forced to still use a deprecated version of PHP, ask me in private, and I will release a legacy version of the package for you.
+### CLI Usage
 
-### APCu example:
+For CLI usage, remember to enable APCu in your `php.ini`:
 
-## Load dependencies 
+```ini
+apc.enable_cli=1
+```
+
+## Available Cache Backends
+
+| Backend | Enum | Description |
+|---------|------|-------------|
+| APCu | `CacheEnum::APCU` | Local in-memory cache, no external dependencies |
+| Predis | `CacheEnum::REDIS` | Redis via Predis library (pure PHP) |
+| PhpRedis | `CacheEnum::PHP_REDIS` | Redis via php-redis extension (C extension, better performance) |
+
+## API Reference
+
+### `isLimited(string $key, int $limit, int $ttl): bool`
+
+Check if a key has exceeded the rate limit.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$key` | string | Unique identifier for the rate limit (e.g., `__METHOD__`) |
+| `$limit` | int | Maximum number of attempts allowed |
+| `$ttl` | int | Time window in seconds |
+
+**Returns:** `true` if the limit has been exceeded, `false` otherwise.
+
+### `isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool`
+
+Check if a key has exceeded the rate limit, with progressive ban support for repeat offenders.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$key` | string | Unique identifier for the rate limit |
+| `$limit` | int | Maximum number of attempts allowed |
+| `$ttl` | int | Base time window in seconds |
+| `$maxAttempts` | int | Max violations before triggering a ban |
+| `$banTimeFrame` | int | Time window for counting violations |
+| `$banTtl` | int | Extended time window when banned |
+| `$clientIp` | string\|null | Client IP for per-client banning |
+
+**Returns:** `true` if the limit has been exceeded, `false` otherwise.
+
+### `clearRateLimitedKey(string $key): bool`
+
+Remove a rate limit key, resetting its counter.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$key` | string | The key to clear |
+
+**Returns:** `true` on success, `false` on failure.
+
+## Usage Examples
+
+### Dependencies
+
 ```php
 use Predis\Client;
 use RateLimiter\Enum\CacheEnum;
@@ -41,106 +101,137 @@ use RateLimiter\Service\AbstractRateLimiterService;
 ```
 
 ### APCu Example
-```php
-class Foo(){
-    public function controllerYouWantToRateLimit(): Response {
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = __METHOD__;  //Name of the function you want to rate limit. You can set a custom key. It's a String!
-        $limit = 2;         //Maximum attempts before the limit
-        $ttl = 3;           //The timeframe you want to limit access for
 
-        if($limiter->isLimited($key, $limit, $ttl)){
-            throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
+```php
+class Foo
+{
+    public function controllerYouWantToRateLimit(): Response
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+        $key = __METHOD__;  // Name of the function you want to rate limit
+        $limit = 2;         // Maximum attempts before the limit
+        $ttl = 3;           // Time window in seconds
+
+        if ($limiter->isLimited($key, $limit, $ttl)) {
+            throw new Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
         }
 
-        // ... other code
+        // ... your code
     }
 }
 ```
 
-### Redis Example with predis client
-```php
+### Redis Example (Predis)
 
-class Foo(){
-    public function controllerYouWantToRateLimit(): Response {
-        $serverIp = "192.168.0.100";        //The server where you've installed the Redis instance.
-        // Example with persistent connection.
+```php
+class Foo
+{
+    public function controllerYouWantToRateLimit(): Response
+    {
         $redis = new Client([
             'scheme' => 'tcp',
-            'host' => $serverIp,
+            'host' => '192.168.0.100',
             'port' => 6379,
             'persistent' => true,
-        ]); 
-         
+        ]);
 
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
-        $key = __METHOD__;  //Name of the function you want to rate limit. You can set a custom key. It's a String!
-        $limit = 2;         //Maximum attempts before the limit
-        $ttl = 3;           //The timeframe you want to limit access for
+        $key = __METHOD__;
+        $limit = 2;
+        $ttl = 3;
 
-        if($limiter->isLimited($key, $limit, $ttl)){
-            throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
+        if ($limiter->isLimited($key, $limit, $ttl)) {
+            throw new Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
         }
-        // ... other code
+
+        // ... your code
     }
 }
 ```
 
-### Redis Example with php-redis
-```php
+### Redis Example (PhpRedis)
 
-class Foo(){
-    public function controllerYouWantToRateLimit(): Response {
-        $serverIp = "192.168.0.100";        //The server where you've installed the Redis instance.
-        // Example with persistent connection.
+```php
+class Foo
+{
+    public function controllerYouWantToRateLimit(): Response
+    {
         $redis = new \Redis();
-        redis->pconnect(
-            $serverIp, // host
-            6379, // port
-            2, // connectTimeout
-            'persistent_id_rl_test'         // persistent_id
+        $redis->pconnect(
+            '192.168.0.100',        // host
+            6379,                   // port
+            2,                      // connect timeout
+            'persistent_id_rl'      // persistent_id
         );
-         
 
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $redis);
-        $key = __METHOD__;  //Name of the function you want to rate limit. You can set a custom key. It's a String!
-        $limit = 2;         //Maximum attempts before the limit
-        $ttl = 3;           //The timeframe you want to limit access for
+        $key = __METHOD__;
+        $limit = 2;
+        $ttl = 3;
 
-        if($limiter->isLimited($key, $limit, $ttl)){
-            throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
+        if ($limiter->isLimited($key, $limit, $ttl)) {
+            throw new Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
         }
-        // ... other code
+
+        // ... your code
     }
 }
 ```
 
-### Rate Limit with Ban option (example with Redis, but you can use APCu anyway
-```php
+### Rate Limit with Ban
 
-class Foo(){
-    public function controllerYouWantToRateLimit(): Response {
-    $serverIp = "192.168.0.100";    //The server where you've installed the Redis instance.
-    // Example with persistent connection.
+Use this when you want to progressively punish repeat offenders with longer timeouts.
+
+```php
+class Foo
+{
+    public function controllerYouWantToRateLimit(): Response
+    {
         $redis = new Client([
             'scheme' => 'tcp',
-            'host' => $this->servername,
-            'port' => $this->port,
+            'host' => '192.168.0.100',
+            'port' => 6379,
             'persistent' => true,
         ]);
-    $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-    $key = __METHOD__;  // Name of the function you want to rate limit. You can set a custom key. It's a String!
-    $limit = 1;         // Maximum attempts before the limit
-    $maxAttempts = 3;   // Max number of attempts you want to allow in a timeframe
-    $banTimeFrame = 4;  // Timeframe where maxAttempts should not be reached to avoid the ban
-    $ttl = 2;           // The base timeframe you want to limit access for
-    $banTtl = 4;        // If a limit is reached greater equals time of max attempts, the new timeframe limit will be 4 seconds
-    $clientIp = filter_input(INPUT_SERVER, 'REMOTE_ADDR');  // It is recommended to send the client IP to limit access to a function to a specific address, not to everyone 
-    
-    if($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp))){
-        throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
-    }
-    // ... other code
+
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+
+        $key = __METHOD__;
+        $limit = 1;             // Max attempts before limit
+        $ttl = 2;               // Base time window (seconds)
+        $maxAttempts = 3;       // Violations before ban kicks in
+        $banTimeFrame = 4;      // Time window for counting violations
+        $banTtl = 10;           // Extended timeout when banned
+        $clientIp = $_SERVER['REMOTE_ADDR'] ?? null;
+
+        if ($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp)) {
+            throw new Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
+        }
+
+        // ... your code
     }
 }
 ```
+
+## Development
+
+### Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `composer test` | Run PHPUnit tests |
+| `composer phpstan` | Run PHPStan static analysis |
+| `composer cs-fix` | Fix code style with PHP-CS-Fixer |
+| `composer cs-check` | Check code style (dry-run) |
+| `composer rector` | Run Rector refactoring |
+| `composer rector-dry` | Preview Rector changes |
+| `composer quality` | Run all quality tools (Rector + CS-Fixer) |
+| `composer quality-check` | Check quality without changes |
+
+## License
+
+This project is licensed under the GPL-3.0-or-later License - see the [LICENSE](LICENSE) file for details.
+
+## Author
+
+**Stefano Perrini** - [spinfo.it](https://www.spinfo.it)
