@@ -23,7 +23,7 @@ To use the most secure strategy, with Redis, you need a Redis server installed a
 
 Debian - Ubuntu
 ```bash
-apt-get install php8.3-redis php8.3-apcu
+apt-get install php8.4-redis php8.4-apcu
 # you can install php-redis and php-apcu module for the version you've installed on the system
 # min version required 8.2
 ```
@@ -58,15 +58,51 @@ class Foo(){
 }
 ```
 
-### Redis Example
+### Redis Example with predis client
 ```php
 
 class Foo(){
     public function controllerYouWantToRateLimit(): Response {
         $serverIp = "192.168.0.100";        //The server where you've installed the Redis instance.
-        $redis = new Client("tcp://$serverIp:6379?persistent=redis01"); // Example with persistent connection.
+        // Example with persistent connection.
+        $redis = new Client([
+            'scheme' => 'tcp',
+            'host' => $serverIp,
+            'port' => 6379,
+            'persistent' => true,
+        ]); 
+         
 
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+        $key = __METHOD__;  //Name of the function you want to rate limit. You can set a custom key. It's a String!
+        $limit = 2;         //Maximum attempts before the limit
+        $ttl = 3;           //The timeframe you want to limit access for
+
+        if($limiter->isLimited($key, $limit, $ttl)){
+            throw new Exception("LIMIT REACHED: YOOUUU SHALL NOOOOT PAAAAAAASSS");
+        }
+        // ... other code
+    }
+}
+```
+
+### Redis Example with php-redis
+```php
+
+class Foo(){
+    public function controllerYouWantToRateLimit(): Response {
+        $serverIp = "192.168.0.100";        //The server where you've installed the Redis instance.
+        // Example with persistent connection.
+        $redis = new \Redis();
+        redis->pconnect(
+            $serverIp, // host
+            6379, // port
+            2, // connectTimeout
+            'persistent_id_rl_test'         // persistent_id
+        );
+         
+
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $redis);
         $key = __METHOD__;  //Name of the function you want to rate limit. You can set a custom key. It's a String!
         $limit = 2;         //Maximum attempts before the limit
         $ttl = 3;           //The timeframe you want to limit access for
@@ -85,7 +121,13 @@ class Foo(){
 class Foo(){
     public function controllerYouWantToRateLimit(): Response {
     $serverIp = "192.168.0.100";    //The server where you've installed the Redis instance.
-    $redis = new Client("tcp://$serverIp:6379?persistent=redis01"); // Example with persistent connection.
+    // Example with persistent connection.
+        $redis = new Client([
+            'scheme' => 'tcp',
+            'host' => $this->servername,
+            'port' => $this->port,
+            'persistent' => true,
+        ]);
     $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
     $key = __METHOD__;  // Name of the function you want to rate limit. You can set a custom key. It's a String!
     $limit = 1;         // Maximum attempts before the limit
