@@ -28,8 +28,10 @@ use Predis\Client;
  */
 class RateLimiterServiceRedis extends AbstractRateLimiterService
 {
+
     public function __construct(private readonly Client $redis)
     {
+        
     }
 
     /**
@@ -59,14 +61,11 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
     public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool
     {
         $this->checkTTL($banTtl);
+        $this->checkTTL($ttl);
         $this->checkTimeFrame($banTimeFrame);
-
-        if (null !== $clientIp) {
-            $violationCountKey = 'BAN_violation_count'.$key.$clientIp;
-        } else {
-            $violationCountKey = 'BAN_violation_count'.$key;
-        }
+        $violationCountKey = null !== $clientIp ? 'BAN_violation_count_' . $key . '_' . $clientIp : 'BAN_violation_count_' . $key;
         $needBan = (int) $this->redis->get($violationCountKey);
+        
         if ($needBan >= $maxAttempts) {
             $ttl = $banTtl;
         }

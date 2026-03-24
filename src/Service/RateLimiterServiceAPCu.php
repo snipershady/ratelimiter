@@ -26,6 +26,7 @@ namespace RateLimiter\Service;
  */
 class RateLimiterServiceAPCu extends AbstractRateLimiterService
 {
+
     #[\Override]
     public function isLimited(string $key, int $limit, int $ttl): bool
     {
@@ -43,13 +44,9 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool
     {
         $this->checkTTL($banTtl);
+        $this->checkTTL($ttl);
         $this->checkTimeFrame($banTimeFrame);
-        if (null !== $clientIp) {
-            $violationCountKey = 'BAN_violation_count'.$key.$clientIp;
-        } else {
-            $violationCountKey = 'BAN_violation_count'.$key;
-        }
-
+        $violationCountKey = null !== $clientIp ? 'BAN_violation_count_' . $key . '_' . $clientIp : 'BAN_violation_count_' . $key;
         $needBan = (int) apcu_fetch($violationCountKey);
 
         if ($needBan >= $maxAttempts) {
@@ -79,7 +76,9 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     private function getActual(string $key, int $step, ?bool $success, int $ttl): int
     {
         if (empty(apcu_exists($key))) {
-            $actual = apcu_inc($key, $step, $success, $ttl);
+            do {
+                $actual = apcu_inc($key, $step, $success, $ttl);
+            } while (!$success);
         } else {
             do {
                 $current = (int) apcu_fetch($key);
