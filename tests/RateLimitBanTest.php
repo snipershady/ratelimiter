@@ -155,11 +155,11 @@ class RateLimitBanTest extends AbstractTestCase
      * not $banTtl.
      *
      * Timeline (banTimeFrame=6, ttl=2):
-     *   t=0  req1: NOT limited.  req2: LIMITED → violation_count=1, TTL=6s
+     *   t=0  req1: NOT limited.  req2: LIMITED --> violation_count=1, TTL=6s
      *   t=3  sleep(ttl+1): main key expired; violation_count has ~3s left
-     *   t=3  req3: NOT limited.  req4: LIMITED → violation_count=2 (≥ maxAttempts=2)
+     *   t=3  req3: NOT limited.  req4: LIMITED --> violation_count=2 (≥ maxAttempts=2)
      *   t=9  sleep(banTimeFrame): violation_count expired at t≈6; main key also expired
-     *   t=9  req5: violation_count=0 → NOT banned; key created with $ttl (not $banTtl) ✓
+     *   t=9  req5: violation_count=0 --> NOT banned; key created with $ttl (not $banTtl) ✓
      */
     public function testBanTimeFrameExpirationResetsViolationsRedis(): void
     {
@@ -187,7 +187,7 @@ class RateLimitBanTest extends AbstractTestCase
         sleep($banTimeFrame); // t≈9s: violation_count and main key both expired
 
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
-        $this->assertFalse($result);                        // violations reset → NOT banned
+        $this->assertFalse($result);                        // violations reset --> NOT banned
         $this->assertSame($ttl, $this->redis->ttl($key));  // key uses normal $ttl, not $banTtl
     }
 
@@ -246,12 +246,12 @@ class RateLimitBanTest extends AbstractTestCase
 
         // --- Bring client A to ban threshold (violation_A = 2 >= maxAttempts) ---
 
-        // Cycle 1 for A: 1 not limited + 1 limited → violation_A = 1
+        // Cycle 1 for A: 1 not limited + 1 limited --> violation_A = 1
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpA);
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpA);
         $limiter->clearRateLimitedKey($key);
 
-        // Cycle 2 for A: 1 not limited + 1 limited → violation_A = 2
+        // Cycle 2 for A: 1 not limited + 1 limited --> violation_A = 2
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpA);
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpA);
         $limiter->clearRateLimitedKey($key);
@@ -263,7 +263,7 @@ class RateLimitBanTest extends AbstractTestCase
 
         // --- Verify client B is NOT banned (violation_B = 1 < maxAttempts) ---
 
-        // Only 1 cycle for B → violation_B = 1 (< maxAttempts=2)
+        // Only 1 cycle for B --> violation_B = 1 (< maxAttempts=2)
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpB);
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpB);
         $limiter->clearRateLimitedKey($key);
@@ -289,12 +289,12 @@ class RateLimitBanTest extends AbstractTestCase
         $clientIpA = '192.168.1.1';
         $clientIpB = '192.168.1.2';
 
-        // Cycle 1 for A → violation_A = 1
+        // Cycle 1 for A --> violation_A = 1
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpA);
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpA);
         $limiter->clearRateLimitedKey($key);
 
-        // Cycle 2 for A → violation_A = 2
+        // Cycle 2 for A --> violation_A = 2
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpA);
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpA);
         $limiter->clearRateLimitedKey($key);
@@ -304,7 +304,7 @@ class RateLimitBanTest extends AbstractTestCase
         $this->assertSame($banTtl, apcu_key_info($key)['ttl']);
         $limiter->clearRateLimitedKey($key);
 
-        // Only 1 cycle for B → violation_B = 1 (< maxAttempts=2)
+        // Only 1 cycle for B --> violation_B = 1 (< maxAttempts=2)
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpB);
         $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIpB);
         $limiter->clearRateLimitedKey($key);

@@ -12,12 +12,14 @@ use Rector\ValueObject\PhpVersion;
 return RectorConfig::configure()
                 ->withPaths([
                     __DIR__ . '/src',                    
+                    __DIR__ . '/tests',                    
                 ])
                 ->withSkip([
-                    __DIR__ . '/tests',
+                    //__DIR__ . '/tests',
                     NewlineAfterStatementRector::class,
                     NewMethodCallWithoutParenthesesRector::class,
-                    RenamePropertyToMatchTypeRector::class
+                    RenamePropertyToMatchTypeRector::class,
+                    Rector\Naming\Rector\Assign\RenameVariableToMatchMethodCallReturnTypeRector::class
                 ])
                 ->withPreparedSets(
                         //deadCode: true,
