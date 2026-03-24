@@ -81,7 +81,7 @@ class RateLimitBanTest extends AbstractTestCase
         $this->assertFalse($result);
     }
 
-    public function testRateLimitWithBaRedis(): void
+    public function testRateLimitWithBanRedisTwo(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = 'test'.microtime(true);

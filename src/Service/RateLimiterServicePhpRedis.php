@@ -26,8 +26,10 @@ namespace RateLimiter\Service;
  */
 class RateLimiterServicePhpRedis extends AbstractRateLimiterService
 {
+
     public function __construct(private readonly \Redis $redis)
     {
+        
     }
 
     /**
@@ -42,7 +44,7 @@ class RateLimiterServicePhpRedis extends AbstractRateLimiterService
         $actualArray = $this->redis->multi()->incr($key)->get($key)->exec();
         $actual = is_array($actualArray) && array_key_exists(0, $actualArray) ? (int) $actualArray[0] : 0;
         if ($actual <= 1) {
-            $actual = (int) $this->redis->multi()->expire($key, $ttl)->get($key)->exec()[0];
+            $actual = (int) $this->redis->multi()->expire($key, $ttl)->get($key)->exec()[1];
         }
 
         return $actual > $limit;
@@ -59,7 +61,7 @@ class RateLimiterServicePhpRedis extends AbstractRateLimiterService
         $this->checkTTL($banTtl);
         $this->checkTimeFrame($banTimeFrame);
 
-        $violationCountKey = 'BAN_violation_count'.$key.$clientIp;
+        $violationCountKey = 'BAN_violation_count' . $key . ($clientIp ?? 'global');
         $needBan = (int) $this->redis->get($violationCountKey);
         if ($needBan >= $maxAttempts) {
             $ttl = $banTtl;

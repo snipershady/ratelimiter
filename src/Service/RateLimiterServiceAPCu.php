@@ -26,6 +26,7 @@ namespace RateLimiter\Service;
  */
 class RateLimiterServiceAPCu extends AbstractRateLimiterService
 {
+
     #[\Override]
     public function isLimited(string $key, int $limit, int $ttl): bool
     {
@@ -37,9 +38,7 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         if (empty(apcu_exists($key))) {
             $actual = apcu_inc($key, $step, $success, $ttl);
         } else {
-            $current = (int) apcu_fetch($key);
-            $actual = $current + 1;
-            apcu_cas($key, $current, $actual);
+            $actual = $this->getActual($key);
         }
 
         return $actual > $limit;
@@ -50,7 +49,7 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     {
         $this->checkTTL($banTtl);
         $this->checkTimeFrame($banTimeFrame);
-        $violationCountKey = 'BAN_violation_count'.$key.$clientIp;
+        $violationCountKey = 'BAN_violation_count' . $key . ($clientIp ?? 'global');
         $needBan = (int) apcu_fetch($violationCountKey);
 
         if ($needBan >= $maxAttempts) {
@@ -72,5 +71,17 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         $this->checkKey($key);
 
         return apcu_delete($key);
+    }
+
+    /**
+     * Serve un retry loop sul CAS fino a successo (pattern standard per operazioni lock-free):
+     * @param string $key
+     */
+    private function getActual(string $key)
+    {
+        do {
+            $current = (int) apcu_fetch($key);
+            $actual = $current + 1;
+        } while (!apcu_cas($key, $current, $actual));
     }
 }
