@@ -34,7 +34,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
     private \Redis $redis;
 
     #[\Override]
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $this->redis = new \Redis();
@@ -50,7 +50,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
     }
 
     #[\Override]
-    public function tearDown(): void
+    protected function tearDown(): void
     {
         parent::tearDown();
         $this->redis->flushall();

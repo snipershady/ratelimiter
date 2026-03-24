@@ -36,7 +36,7 @@ class RateLimiterValidationTest extends AbstractTestCase
     private AbstractRateLimiterService $limiter;
 
     #[\Override]
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         apcu_clear_cache();

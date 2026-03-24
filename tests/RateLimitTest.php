@@ -35,7 +35,7 @@ class RateLimitTest extends AbstractTestCase
     private Client $redis;
 
     #[\Override]
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $this->redis = new Client([
@@ -49,7 +49,7 @@ class RateLimitTest extends AbstractTestCase
     }
 
     #[\Override]
-    public function tearDown(): void
+    protected function tearDown(): void
     {
         parent::tearDown();
         $this->redis->flushall();
@@ -95,7 +95,7 @@ class RateLimitTest extends AbstractTestCase
         $limit = 2;
         $ttl = 3;
         $key = 'test'.microtime(true);
-        $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
+        $this->redis = new Client(sprintf('tcp://%s:%d?persistent=redis01', $this->servername, $this->port));
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
 
         $result = $limiter->isLimited($key, $limit, $ttl);
@@ -146,7 +146,7 @@ class RateLimitTest extends AbstractTestCase
     public function testLimitRedis(): void
     {
         // $this->markTestSkipped();
-        $this->redis = new Client("tcp://$this->servername:$this->port?persistent=redis01");
+        $this->redis = new Client(sprintf('tcp://%s:%d?persistent=redis01', $this->servername, $this->port));
 
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
         $key = 'test'.microtime(true);

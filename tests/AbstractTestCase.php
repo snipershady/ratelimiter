@@ -29,6 +29,7 @@ use PHPUnit\Framework\TestCase;
 abstract class AbstractTestCase extends TestCase
 {
     protected int $port = 6379;
+
     protected string $servername = 'redis-server';
 
     #[\Override]
@@ -44,8 +45,8 @@ abstract class AbstractTestCase extends TestCase
         });
         try {
             apcu_cache_info();
-        } catch (\Exception $ex) {
-            echo PHP_EOL.$ex->getMessage().PHP_EOL;
+        } catch (\Exception $exception) {
+            echo PHP_EOL.$exception->getMessage().PHP_EOL;
             echo PHP_EOL.'[APCU]'.PHP_EOL.' apc.enable_cli=1'.PHP_EOL;
             exit;
         }
