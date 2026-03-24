@@ -129,7 +129,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
             $countFalse = false === $result ? $countFalse + 1 : $countFalse;
             $countTrue = $result ? $countTrue + 1 : $countTrue;
         }
-       
+
         $this->assertTrue($countFalse === $limit);
         $this->assertTrue($countTrue === ($attempts - $limit));
     }
@@ -148,15 +148,13 @@ class RateLimitPhpRedisTest extends AbstractTestCase
             $countFalse = false === $result ? $countFalse + 1 : $countFalse;
             $countTrue = $result ? $countTrue + 1 : $countTrue;
         }
-        
+
         $this->assertTrue($countFalse === $limit);
         $this->assertTrue($countTrue === ($attempts - $limit));
     }
 
     public function testLimitRedisLimitOneAgain(): void
     {
-       
-
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
         $key = 'test'.microtime(true).'_'.__METHOD__;
         $limit = 1;
@@ -179,8 +177,6 @@ class RateLimitPhpRedisTest extends AbstractTestCase
 
     public function testLimitRedisLimitOneAgainTtlExpire(): void
     {
-        
-
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
         $key = 'test'.microtime(true).'_'.__METHOD__;
         $limit = 1;

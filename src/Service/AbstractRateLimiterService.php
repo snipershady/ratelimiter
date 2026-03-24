@@ -3,7 +3,6 @@
 namespace RateLimiter\Service;
 
 use InvalidArgumentException;
-use Override;
 use Predis\Client;
 use RateLimiter\Enum\CacheEnum;
 
@@ -31,10 +30,8 @@ use RateLimiter\Enum\CacheEnum;
  */
 abstract class AbstractRateLimiterService implements RateLimiterInterface
 {
-
     private function __construct()
     {
-        
     }
 
     /**
@@ -42,7 +39,7 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
      * @param int    $limit <p>Limit</p>
      * @param int    $ttl   <p>Timeframe</p>
      */
-    #[Override]
+    #[\Override]
     abstract public function isLimited(string $key, int $limit, int $ttl): bool;
 
     /**
@@ -58,7 +55,7 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
      * @param int         $banTtl       <p>New timeframe for banished client</p>
      * @param string|null $clientIp     <p>Useful to ban a specific client from a function</p>
      */
-    #[Override]
+    #[\Override]
     abstract public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool;
 
     /**
@@ -66,42 +63,42 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
      *
      * @param string $key <p>key to set free from limiter</p>
      */
-    #[Override]
+    #[\Override]
     abstract public function clearRateLimitedKey(string $key): bool;
 
     /**
      * <p>Verify if <b>ttl</b> parameter is positive integer. Throws InvalidArgumentException</p>.
      *
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     protected function checkTTL(int $ttl): void
     {
         if (!$this->isPositiveNotZeroInteger($ttl)) {
-            throw new InvalidArgumentException(sprintf('TTL must be positive integer %d given, instead', $ttl));
+            throw new \InvalidArgumentException(sprintf('TTL must be positive integer %d given, instead', $ttl));
         }
     }
 
     /**
      * <p>Verify if <b>$timeFrame</b> parameter is positive integer. Throws InvalidArgumentException</p>.
      *
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     protected function checkTimeFrame(int $timeFrame): void
     {
         if (!$this->isPositiveNotZeroInteger($timeFrame)) {
-            throw new InvalidArgumentException(sprintf('TimeFrame must be positive integer %d given, instead', $timeFrame));
+            throw new \InvalidArgumentException(sprintf('TimeFrame must be positive integer %d given, instead', $timeFrame));
         }
     }
 
     /**
      * <p>Verify if <b>key</b> parameter is not empty. Throws InvalidArgumentException</p>.
      *
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     protected function checkKey(string $key): void
     {
         if (empty($key)) {
-            throw new InvalidArgumentException(sprintf('Key cannot be empty, %s given, instead', $key));
+            throw new \InvalidArgumentException(sprintf('Key cannot be empty, %s given, instead', $key));
         }
     }
 

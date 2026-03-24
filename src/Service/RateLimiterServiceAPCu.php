@@ -26,7 +26,6 @@ namespace RateLimiter\Service;
  */
 class RateLimiterServiceAPCu extends AbstractRateLimiterService
 {
-
     #[\Override]
     public function isLimited(string $key, int $limit, int $ttl): bool
     {
@@ -35,11 +34,7 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         $step = 1;
         $success = null;
 
-        if (empty(apcu_exists($key))) {
-            $actual = apcu_inc($key, $step, $success, $ttl);
-        } else {
-            $actual = $this->getActual($key);
-        }
+        $actual = $this->getActual($key, $step, $success, $ttl);
 
         return $actual > $limit;
     }
@@ -49,7 +44,12 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     {
         $this->checkTTL($banTtl);
         $this->checkTimeFrame($banTimeFrame);
-        $violationCountKey = 'BAN_violation_count' . $key . ($clientIp ?? 'global');
+        if (null !== $clientIp) {
+            $violationCountKey = 'BAN_violation_count'.$key.$clientIp;
+        } else {
+            $violationCountKey = 'BAN_violation_count'.$key;
+        }
+
         $needBan = (int) apcu_fetch($violationCountKey);
 
         if ($needBan >= $maxAttempts) {
@@ -59,10 +59,10 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         if ($actual) {
             $step = 1;
             $success = null;
-            apcu_inc($violationCountKey, $step, $success, $banTtl);
+            $actual = $this->getActual($violationCountKey, $step, $success, $banTtl);
         }
 
-        return $actual;
+        return (int) $actual > 0;
     }
 
     #[\Override]
@@ -75,13 +75,18 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
 
     /**
      * Serve un retry loop sul CAS fino a successo (pattern standard per operazioni lock-free):
-     * @param string $key
      */
-    private function getActual(string $key)
+    private function getActual(string $key, int $step, ?bool $success, int $ttl): int
     {
-        do {
-            $current = (int) apcu_fetch($key);
-            $actual = $current + 1;
-        } while (!apcu_cas($key, $current, $actual));
+        if (empty(apcu_exists($key))) {
+            $actual = apcu_inc($key, $step, $success, $ttl);
+        } else {
+            do {
+                $current = (int) apcu_fetch($key);
+                $actual = $current + 1;
+            } while (!apcu_cas($key, $current, $actual));
+        }
+
+        return $actual;
     }
 }
