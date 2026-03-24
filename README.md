@@ -1,6 +1,6 @@
 # Rate Limiter
 
-[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.2-8892BF.svg)](https://php.net/)
+[![PHP Version](https://img.shields.io/badge/php-%5E8.3-8892BF.svg)](https://php.net/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
 [![Packagist](https://img.shields.io/packagist/v/snipershady/ratelimiter.svg)](https://packagist.org/packages/snipershady/ratelimiter)
 
@@ -19,19 +19,36 @@ composer require snipershady/ratelimiter
 
 ## Requirements
 
-| Requirement | Version |
-|-------------|---------|
-| PHP | >= 8.2 |
-| ext-apcu | * |
-| ext-redis | * |
-| predis/predis | ^3.2 |
+### Composer packages
+
+| Package | Version | Notes |
+|---------|---------|-------|
+| PHP | ^8.3 | minimum version |
+| predis/predis | ^3.2 | required only for `CacheEnum::REDIS` |
+
+### System extensions
+
+Native PHP extensions are not managed by Composer. Install only the ones needed by the backends you use.
+
+| Extension | Required by |
+|-----------|-------------|
+| ext-apcu | `CacheEnum::APCU` |
+| ext-redis | `CacheEnum::PHP_REDIS` |
+| ext-memcached | `CacheEnum::MEMCACHED` |
 
 ### Debian / Ubuntu
 
 ```bash
-apt-get install php8.4-redis php8.4-apcu
-# You can install php-redis and php-apcu module for the version you've installed on the system
-# Minimum PHP version required: 8.2
+# APCu
+apt-get install php8.3-apcu
+
+# Redis (php-redis native extension)
+apt-get install php8.3-redis
+
+# Memcached (php-memcached native extension — note the 'd')
+apt-get install php8.3-memcached
+
+# Replace "8.3" with the PHP version installed on your system if newer.
 ```
 
 ### CLI Usage
@@ -46,9 +63,10 @@ apc.enable_cli=1
 
 | Backend | Enum | Description |
 |---------|------|-------------|
-| APCu | `CacheEnum::APCU` | Local in-memory cache, no external dependencies |
+| APCu | `CacheEnum::APCU` | Local in-memory cache, no external server required |
 | Predis | `CacheEnum::REDIS` | Redis via Predis library (pure PHP) |
-| PhpRedis | `CacheEnum::PHP_REDIS` | Redis via php-redis extension (C extension, better performance) |
+| PhpRedis | `CacheEnum::PHP_REDIS` | Redis via php-redis native extension (better performance) |
+| Memcached | `CacheEnum::MEMCACHED` | Memcached via php-memcached native extension |
 
 ## API Reference
 
@@ -210,6 +228,37 @@ class Foo
 }
 ```
 
+### Memcached Example
+
+Requires `ext-memcached` (`apt-get install php8.4-memcached`).
+
+```php
+class Foo
+{
+    public function controllerYouWantToRateLimit(): Response
+    {
+        $memcached = new \Memcached('persistent_id_rl');
+        if (!$memcached->getServerList()) {
+            $memcached->addServer('192.168.0.100', 11211);
+        }
+
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $memcached);
+        $key = __METHOD__;
+        $limit = 2;
+        $ttl = 3;
+
+        if ($limiter->isLimited($key, $limit, $ttl)) {
+            throw new Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
+        }
+
+        // ... your code
+    }
+}
+```
+
+> **Note:** passing a `persistent_id` to `new \Memcached()` reuses the connection pool
+> across requests. The `getServerList()` guard prevents adding the same server twice.
+
 ### Rate Limit with Ban
 
 Use this when you want to progressively punish repeat offenders with longer block windows.
@@ -326,6 +375,15 @@ the same violation count — useful when you want to protect a resource globally
 of origin).
 
 ## Development
+
+### Dev dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| phpunit/phpunit | ^12.1 | test runner |
+| phpstan/phpstan | ^2.1 | static analysis |
+| friendsofphp/php-cs-fixer | ^3.90 | code style |
+| rector/rector | ^2.1 | automated refactoring |
 
 ### Available Scripts
 
