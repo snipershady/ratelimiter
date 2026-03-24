@@ -20,7 +20,8 @@ namespace RateLimiter\Service;
  */
 
 /**
- * Description of RateLimiterServiceAPCu.
+ * APCu-backed rate limiter. Uses lock-free CAS loops to safely increment
+ * shared counters without requiring a mutex or external locking mechanism.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
@@ -53,8 +54,8 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         $isLImited = $this->isLimited($key, $limit, $ttl);
         if ($isLImited) {
             $step = 1;
-            // TTL = $banTimeFrame: il counter di violazioni scade dopo $banTimeFrame secondi
-            // dalla PRIMA violazione (apcu_inc imposta TTL solo alla creazione. Fixed Window)
+            // TTL = $banTimeFrame: the violation counter expires $banTimeFrame seconds after
+            // the FIRST violation. apcu_inc() only sets the TTL at key creation (fixed window).
             $actual = $this->getActual($violationCountKey, $step, $banTimeFrame);
         }
 
@@ -70,7 +71,9 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     }
 
     /**
-     * Serve un retry loop sul CAS fino a successo (pattern standard per operazioni lock-free):
+     * Atomically increments a counter using a CAS retry loop (standard lock-free pattern).
+     * On first access the key is created with the given TTL via apcu_inc(); subsequent
+     * accesses use apcu_cas() to avoid lost updates under concurrent requests.
      */
     private function getActual(string $key, int $step, int $ttl): int
     {

@@ -24,7 +24,8 @@ use RateLimiter\Service\AbstractRateLimiterService;
  */
 
 /**
- * Description of AbstractTestCase.
+ * Integration tests for isLimitedWithBan() across the APCu and Predis backends.
+ * Covers ban lifecycle, banTimeFrame expiration, and per-IP violation isolation.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  *

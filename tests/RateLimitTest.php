@@ -24,7 +24,8 @@ use RateLimiter\Service\AbstractRateLimiterService;
  */
 
 /**
- * Description of AbstractTestCase.
+ * Integration tests for isLimited() across the APCu and Predis backends.
+ * Covers basic limiting, TTL expiration, and key deletion.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  *

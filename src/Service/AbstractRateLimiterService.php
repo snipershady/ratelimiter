@@ -25,7 +25,8 @@ use RateLimiter\Enum\CacheEnum;
  */
 
 /**
- * Description of AbstractRateLimiterService.
+ * Base class for all rate limiter backends. Provides shared input-validation
+ * helpers and the backward-compatible factory() entry point.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */

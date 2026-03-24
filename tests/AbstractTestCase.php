@@ -22,7 +22,8 @@ use PHPUnit\Framework\TestCase;
  */
 
 /**
- * Description of AbstractTestCase.
+ * Base test case. Verifies that APCu is available with apc.enable_cli=1
+ * and registers an error handler that converts PHP errors to exceptions.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */

@@ -20,7 +20,7 @@ namespace RateLimiter\Enum;
  */
 
 /**
- * Description of CacheEnum.
+ * Identifies the cache backend to use when building a rate limiter via the factory.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */

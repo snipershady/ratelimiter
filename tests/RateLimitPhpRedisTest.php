@@ -23,7 +23,8 @@ use RateLimiter\Service\AbstractRateLimiterService;
  */
 
 /**
- * Description of AbstractTestCase.
+ * Integration tests for isLimited() using the php-redis native extension backend.
+ * Covers basic limiting, TTL expiration, and key deletion.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  *
