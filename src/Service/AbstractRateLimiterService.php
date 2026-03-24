@@ -100,12 +100,13 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
         }
     }
 
-    public static function factory(CacheEnum $cacheEnum, Client|\Redis|null $redisClient = null): AbstractRateLimiterService
+    public static function factory(CacheEnum $cacheEnum, Client|\Redis|\Memcached|null $client = null): AbstractRateLimiterService
     {
         return match ($cacheEnum) {
             CacheEnum::APCU => new RateLimiterServiceAPCu(),
-            CacheEnum::REDIS => new RateLimiterServiceRedis(new PredisAdapter($redisClient)),
-            CacheEnum::PHP_REDIS => new RateLimiterServiceRedis(new PhpRedisAdapter($redisClient)),
+            CacheEnum::REDIS => new RateLimiterServiceRedis(new PredisAdapter($client)),
+            CacheEnum::PHP_REDIS => new RateLimiterServiceRedis(new PhpRedisAdapter($client)),
+            CacheEnum::MEMCACHED => new RateLimiterServiceMemcached($client),
         };
     }
 

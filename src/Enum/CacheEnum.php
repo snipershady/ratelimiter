@@ -29,4 +29,5 @@ enum CacheEnum: int
     case APCU = 1;
     case REDIS = 2;
     case PHP_REDIS = 3;
+    case MEMCACHED = 4;
 }
