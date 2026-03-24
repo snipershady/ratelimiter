@@ -32,11 +32,10 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         $this->checkKey($key);
         $this->checkTTL($ttl);
         $step = 1;
-        $success = null;
 
-        $actual = $this->getActual($key, $step, $success, $ttl);
+        $actual = $this->getActual($key, $step, $ttl);
 
-        return $actual > $limit;
+        return (int) $actual > $limit;
     }
 
     #[\Override]
@@ -54,10 +53,9 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         $actual = $this->isLimited($key, $limit, $ttl);
         if ($actual) {
             $step = 1;
-            $success = null;
             // TTL = $banTimeFrame: il counter di violazioni scade dopo $banTimeFrame secondi
             // dalla PRIMA violazione (apcu_inc imposta TTL solo alla creazione. Fixed Window)
-            $actual = $this->getActual($violationCountKey, $step, $success, $banTimeFrame);
+            $actual = $this->getActual($violationCountKey, $step, $banTimeFrame);
         }
 
         return (int) $actual > 0;
@@ -74,11 +72,12 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     /**
      * Serve un retry loop sul CAS fino a successo (pattern standard per operazioni lock-free):
      */
-    private function getActual(string $key, int $step, ?bool $success, int $ttl): int
+    private function getActual(string $key, int $step, int $ttl): int
     {
+        $success = null;
         if (empty(apcu_exists($key))) {
             do {
-                $actual = apcu_inc($key, $step, $success, $ttl);
+                $actual = (int) apcu_inc($key, $step, $success, $ttl);
             } while (!$success);
         } else {
             do {

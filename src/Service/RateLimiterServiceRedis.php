@@ -44,7 +44,7 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
         $actualArray = $this->redis->transaction()->incr($key)->get($key)->execute();
         $actual = is_array($actualArray) && array_key_exists(0, $actualArray) ? (int) $actualArray[0] : 0;
         if ($actual <= 1) {
-            $actual = (int) $this->redis->transaction()->expire($key, $ttl)->get($key)->execute()[0];
+            $actual = (int) $this->redis->transaction()->expire($key, $ttl)->get($key)->execute()[1];
         }
 
         return $actual > $limit;

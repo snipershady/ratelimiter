@@ -2,7 +2,6 @@
 
 namespace RateLimiter\Service;
 
-use InvalidArgumentException;
 use Predis\Client;
 use RateLimiter\Enum\CacheEnum;
 
@@ -30,10 +29,6 @@ use RateLimiter\Enum\CacheEnum;
  */
 abstract class AbstractRateLimiterService implements RateLimiterInterface
 {
-    private function __construct()
-    {
-    }
-
     /**
      * @param string $key   <p>Name of the function you want to limit. You can use __FUNCTION__ or __METHOD__ inside a subroutine to avoid collision</p>
      * @param int    $limit <p>Limit</p>
@@ -86,7 +81,7 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
     protected function checkTimeFrame(int $timeFrame): void
     {
         if (!$this->isPositiveInteger($timeFrame)) {
-            throw new \InvalidArgumentException(sprintf('TimeFrame must be positive integer %d given, instead', $timeFrame));
+            throw new \InvalidArgumentException(sprintf('TimeFrame must be a positive integer, %d given', $timeFrame));
         }
     }
 
