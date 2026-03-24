@@ -23,7 +23,8 @@ use RateLimiter\Service\AbstractRateLimiterService;
  */
 
 /**
- * Description of AbstractTestCase.
+ * Integration tests for isLimited() using the php-redis native extension backend.
+ * Covers basic limiting, TTL expiration, and key deletion.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  *
@@ -31,32 +32,10 @@ use RateLimiter\Service\AbstractRateLimiterService;
  */
 class RateLimitPhpRedisTest extends AbstractTestCase
 {
-    private int $port = 6379;
-    private string $servername = 'redis-server';
     private \Redis $redis;
 
     #[\Override]
-    public static function setUpBeforeClass(): void
-    {
-        set_error_handler(function ($errno, $errstr, $errfile, $errline): false {
-            // error was suppressed with the @-operator
-            if (0 === error_reporting()) {
-                return false;
-            }
-
-            throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
-        });
-        try {
-            apcu_cache_info();
-        } catch (\Exception $ex) {
-            echo PHP_EOL.$ex->getMessage().PHP_EOL;
-            echo PHP_EOL.'[APCU]'.PHP_EOL.' apc.enable_cli=1'.PHP_EOL;
-            exit;
-        }
-    }
-
-    #[\Override]
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $this->redis = new \Redis();
@@ -72,7 +51,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
     }
 
     #[\Override]
-    public function tearDown(): void
+    protected function tearDown(): void
     {
         parent::tearDown();
         $this->redis->flushall();
@@ -129,15 +108,13 @@ class RateLimitPhpRedisTest extends AbstractTestCase
             $countFalse = false === $result ? $countFalse + 1 : $countFalse;
             $countTrue = $result ? $countTrue + 1 : $countTrue;
         }
-        // echo $countFalse;
-        $this->assertTrue($countFalse === $limit);
-        $this->assertTrue($countTrue === ($attempts - $limit));
+
+        $this->assertSame($limit, $countFalse);
+        $this->assertSame($attempts - $limit, $countTrue);
     }
 
     public function testLimitRedisLimitOne(): void
     {
-        // $this->markTestSkipped();
-
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
         $key = 'test'.microtime(true).'_'.__METHOD__;
         $limit = 1;
@@ -150,15 +127,13 @@ class RateLimitPhpRedisTest extends AbstractTestCase
             $countFalse = false === $result ? $countFalse + 1 : $countFalse;
             $countTrue = $result ? $countTrue + 1 : $countTrue;
         }
-        // echo $countFalse;
-        $this->assertTrue($countFalse === $limit);
-        $this->assertTrue($countTrue === ($attempts - $limit));
+
+        $this->assertSame($limit, $countFalse);
+        $this->assertSame($attempts - $limit, $countTrue);
     }
 
     public function testLimitRedisLimitOneAgain(): void
     {
-        // $this->markTestSkipped();
-
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
         $key = 'test'.microtime(true).'_'.__METHOD__;
         $limit = 1;
@@ -181,8 +156,6 @@ class RateLimitPhpRedisTest extends AbstractTestCase
 
     public function testLimitRedisLimitOneAgainTtlExpire(): void
     {
-        // $this->markTestSkipped();
-
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
         $key = 'test'.microtime(true).'_'.__METHOD__;
         $limit = 1;
@@ -192,13 +165,13 @@ class RateLimitPhpRedisTest extends AbstractTestCase
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertFalse($result);
         $currentTtl = $this->redis->ttl($key);
-        $this->assertEquals($currentTtl, $ttl);
+        $this->assertSame($ttl, $currentTtl);
 
         sleep($sleep);
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertTrue($result);
         $currentTtl = $this->redis->ttl($key);
-        $this->assertEquals($currentTtl, $ttl - $sleep);
+        $this->assertSame($ttl - $sleep, $currentTtl);
     }
 
     public function testLimitRedisLimitOneAgainTtlExpireFiveSeconds(): void
@@ -214,13 +187,13 @@ class RateLimitPhpRedisTest extends AbstractTestCase
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertFalse($result);
         $currentTtl = $this->redis->ttl($key);
-        $this->assertEquals($currentTtl, $ttl);
+        $this->assertSame($ttl, $currentTtl);
 
         sleep($sleep);
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertTrue($result);
         $currentTtl = $this->redis->ttl($key);
-        $this->assertEquals($currentTtl, $ttl - $sleep);
+        $this->assertSame($ttl - $sleep, $currentTtl);
     }
 
     public function testLimitRedisAndDeleteKey(): void
@@ -233,12 +206,12 @@ class RateLimitPhpRedisTest extends AbstractTestCase
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertFalse($result);
         $currentTtl = $this->redis->ttl($key);
-        $this->assertEquals($currentTtl, $ttl);
+        $this->assertSame($ttl, $currentTtl);
         sleep($sleep);
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertTrue($result);
         $currentTtl = $this->redis->ttl($key);
-        $this->assertEquals($currentTtl, $ttl - $sleep);
+        $this->assertSame($ttl - $sleep, $currentTtl);
         $limiter->clearRateLimitedKey($key);
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertFalse($result);

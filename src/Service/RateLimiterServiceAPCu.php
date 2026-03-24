@@ -20,7 +20,8 @@ namespace RateLimiter\Service;
  */
 
 /**
- * Description of RatelimiterService.
+ * APCu-backed rate limiter. Uses lock-free CAS loops to safely increment
+ * shared counters without requiring a mutex or external locking mechanism.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
@@ -32,15 +33,8 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         $this->checkKey($key);
         $this->checkTTL($ttl);
         $step = 1;
-        $success = null;
 
-        if (empty(apcu_exists($key))) {
-            $actual = apcu_inc($key, $step, $success, $ttl);
-        } else {
-            $current = (int) apcu_fetch($key);
-            $actual = $current + 1;
-            apcu_cas($key, $current, $actual);
-        }
+        $actual = $this->getActual($key, $step, $ttl);
 
         return $actual > $limit;
     }
@@ -49,21 +43,23 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool
     {
         $this->checkTTL($banTtl);
+        $this->checkTTL($ttl);
         $this->checkTimeFrame($banTimeFrame);
-        $violationCountKey = 'BAN_violation_count'.$key.$clientIp;
+        $violationCountKey = null !== $clientIp ? 'BAN_violation_count_'.$key.'_'.$clientIp : 'BAN_violation_count_'.$key;
         $needBan = (int) apcu_fetch($violationCountKey);
-
+        $actual = 0;
         if ($needBan >= $maxAttempts) {
             $ttl = $banTtl;
         }
-        $actual = $this->isLimited($key, $limit, $ttl);
-        if ($actual) {
+        $isLImited = $this->isLimited($key, $limit, $ttl);
+        if ($isLImited) {
             $step = 1;
-            $success = null;
-            apcu_inc($violationCountKey, $step, $success, $banTtl);
+            // TTL = $banTimeFrame: the violation counter expires $banTimeFrame seconds after
+            // the FIRST violation. apcu_inc() only sets the TTL at key creation (fixed window).
+            $actual = $this->getActual($violationCountKey, $step, $banTimeFrame);
         }
 
-        return $actual;
+        return $actual > 0;
     }
 
     #[\Override]
@@ -72,5 +68,27 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         $this->checkKey($key);
 
         return apcu_delete($key);
+    }
+
+    /**
+     * Atomically increments a counter using a CAS retry loop (standard lock-free pattern).
+     * On first access the key is created with the given TTL via apcu_inc(); subsequent
+     * accesses use apcu_cas() to avoid lost updates under concurrent requests.
+     */
+    private function getActual(string $key, int $step, int $ttl): int
+    {
+        $success = null;
+        if (!apcu_exists($key)) {
+            do {
+                $actual = (int) apcu_inc($key, $step, $success, $ttl);
+            } while (!$success);
+        } else {
+            do {
+                $current = (int) apcu_fetch($key);
+                $actual = $current + 1;
+            } while (!apcu_cas($key, $current, $actual));
+        }
+
+        return $actual;
     }
 }

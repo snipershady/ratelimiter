@@ -1,6 +1,6 @@
 # Rate Limiter
 
-[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.2-8892BF.svg)](https://php.net/)
+[![PHP Version](https://img.shields.io/badge/php-%5E8.3-8892BF.svg)](https://php.net/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0.html)
 [![Packagist](https://img.shields.io/packagist/v/snipershady/ratelimiter.svg)](https://packagist.org/packages/snipershady/ratelimiter)
 
@@ -19,19 +19,36 @@ composer require snipershady/ratelimiter
 
 ## Requirements
 
-| Requirement | Version |
-|-------------|---------|
-| PHP | >= 8.2 |
-| ext-apcu | * |
-| ext-redis | * |
-| predis/predis | ^3.2 |
+### Composer packages
+
+| Package | Version | Notes |
+|---------|---------|-------|
+| PHP | ^8.3 | minimum version |
+| predis/predis | ^3.2 | required only for `CacheEnum::REDIS` |
+
+### System extensions
+
+Native PHP extensions are not managed by Composer. Install only the ones needed by the backends you use.
+
+| Extension | Required by |
+|-----------|-------------|
+| ext-apcu | `CacheEnum::APCU` |
+| ext-redis | `CacheEnum::PHP_REDIS` |
+| ext-memcached | `CacheEnum::MEMCACHED` |
 
 ### Debian / Ubuntu
 
 ```bash
-apt-get install php8.4-redis php8.4-apcu
-# You can install php-redis and php-apcu module for the version you've installed on the system
-# Minimum PHP version required: 8.2
+# APCu
+apt-get install php8.3-apcu
+
+# Redis (php-redis native extension)
+apt-get install php8.3-redis
+
+# Memcached (php-memcached native extension — note the 'd')
+apt-get install php8.3-memcached
+
+# Replace "8.3" with the PHP version installed on your system if newer.
 ```
 
 ### CLI Usage
@@ -46,9 +63,10 @@ apc.enable_cli=1
 
 | Backend | Enum | Description |
 |---------|------|-------------|
-| APCu | `CacheEnum::APCU` | Local in-memory cache, no external dependencies |
+| APCu | `CacheEnum::APCU` | Local in-memory cache, no external server required |
 | Predis | `CacheEnum::REDIS` | Redis via Predis library (pure PHP) |
-| PhpRedis | `CacheEnum::PHP_REDIS` | Redis via php-redis extension (C extension, better performance) |
+| PhpRedis | `CacheEnum::PHP_REDIS` | Redis via php-redis native extension (better performance) |
+| Memcached | `CacheEnum::MEMCACHED` | Memcached via php-memcached native extension |
 
 ## API Reference
 
@@ -67,18 +85,50 @@ Check if a key has exceeded the rate limit.
 ### `isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool`
 
 Check if a key has exceeded the rate limit, with progressive ban support for repeat offenders.
+Each violation (a request that exceeds `$limit` within `$ttl`) increments a per-client counter.
+When that counter reaches `$maxAttempts` within the `$banTimeFrame` observation window, the client
+is banned: its next time window is extended to `$banTtl` instead of the normal `$ttl`.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `$key` | string | Unique identifier for the rate limit |
-| `$limit` | int | Maximum number of attempts allowed |
-| `$ttl` | int | Base time window in seconds |
-| `$maxAttempts` | int | Max violations before triggering a ban |
-| `$banTimeFrame` | int | Time window for counting violations |
-| `$banTtl` | int | Extended time window when banned |
-| `$clientIp` | string\|null | Client IP for per-client banning |
+| `$limit` | int | Maximum number of requests allowed in `$ttl` seconds |
+| `$ttl` | int | Normal time window in seconds |
+| `$maxAttempts` | int | Number of violations allowed before a ban is applied |
+| `$banTimeFrame` | int | Observation window in seconds during which violations are counted. The violation counter resets after `$banTimeFrame` seconds from the first violation, regardless of subsequent activity (fixed window). |
+| `$banTtl` | int | Extended time window in seconds applied when the client is banned (`$banTtl` replaces `$ttl` for the duration of the ban) |
+| `$clientIp` | string\|null | When provided, each IP address maintains its own independent violation counter. Pass `null` to apply a shared global counter for the key. |
 
 **Returns:** `true` if the limit has been exceeded, `false` otherwise.
+
+#### How the three time parameters interact
+
+```
+$ttl          Normal window: max $limit requests every $ttl seconds
+$banTimeFrame Observation window: counts how many times the limit was
+              exceeded. Resets $banTimeFrame seconds after the first violation.
+$banTtl       Punishment window: replaces $ttl when the client has exceeded
+              the limit $maxAttempts times within $banTimeFrame seconds.
+```
+
+**Concrete timeline** — `$limit=1, $ttl=5s, $maxAttempts=2, $banTimeFrame=30s, $banTtl=120s`:
+
+```
+ t=0s   Request 1: allowed  (counter=1, within limit)
+ t=1s   Request 2: BLOCKED  → violation #1 recorded, violation TTL=30s starts
+ t=6s   Normal window ($ttl=5s) expired
+ t=6s   Request 3: allowed  (new window, violation_count=1 < maxAttempts=2)
+ t=7s   Request 4: BLOCKED  → violation #2 recorded  ← ban threshold reached!
+        violation_count=2 expires at t≈30s (banTimeFrame from t≈1s)
+ t=12s  Normal window expired
+ t=12s  Request 5: allowed  (new window; but violation_count=2 ≥ maxAttempts
+                              → window is extended: this key now lives 120s)
+ t=13s  Request 6: BLOCKED  (inside the 120s ban window)
+ ...    All requests blocked until t≈132s (t=12 + banTtl=120)
+ t=31s  Violation counter expired (banTimeFrame=30s from t≈1s)
+ t=132s Ban window ($banTtl=120s) expired
+ t=132s Request N: allowed  (violation_count=0, normal $ttl=5s applies again)
+```
 
 ### `clearRateLimitedKey(string $key): bool`
 
@@ -178,33 +228,26 @@ class Foo
 }
 ```
 
-### Rate Limit with Ban
+### Memcached Example
 
-Use this when you want to progressively punish repeat offenders with longer timeouts.
+Requires `ext-memcached` (`apt-get install php8.4-memcached`).
 
 ```php
 class Foo
 {
     public function controllerYouWantToRateLimit(): Response
     {
-        $redis = new Client([
-            'scheme' => 'tcp',
-            'host' => '192.168.0.100',
-            'port' => 6379,
-            'persistent' => true,
-        ]);
+        $memcached = new \Memcached('persistent_id_rl');
+        if (!$memcached->getServerList()) {
+            $memcached->addServer('192.168.0.100', 11211);
+        }
 
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
-
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $memcached);
         $key = __METHOD__;
-        $limit = 1;             // Max attempts before limit
-        $ttl = 2;               // Base time window (seconds)
-        $maxAttempts = 3;       // Violations before ban kicks in
-        $banTimeFrame = 4;      // Time window for counting violations
-        $banTtl = 10;           // Extended timeout when banned
-        $clientIp = $_SERVER['REMOTE_ADDR'] ?? null;
+        $limit = 2;
+        $ttl = 3;
 
-        if ($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp)) {
+        if ($limiter->isLimited($key, $limit, $ttl)) {
             throw new Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
         }
 
@@ -213,7 +256,134 @@ class Foo
 }
 ```
 
+> **Note:** passing a `persistent_id` to `new \Memcached()` reuses the connection pool
+> across requests. The `getServerList()` guard prevents adding the same server twice.
+
+### Rate Limit with Ban
+
+Use this when you want to progressively punish repeat offenders with longer block windows.
+Normal rate limiting resets every `$ttl` seconds. With ban support, a client that repeatedly
+triggers the limit within the `$banTimeFrame` observation window gets its block window
+extended to `$banTtl` seconds instead.
+
+#### With Predis
+
+```php
+class LoginController
+{
+    public function login(): Response
+    {
+        $redis = new Client([
+            'scheme' => 'tcp',
+            'host'   => '192.168.0.100',
+            'port'   => 6379,
+            'persistent' => true,
+        ]);
+
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+
+        $key          = __METHOD__;
+        $limit        = 5;      // Allow 5 login attempts per window
+        $ttl          = 60;     // Normal window: 60 seconds
+        $maxAttempts  = 3;      // Ban after 3 violations within $banTimeFrame
+        $banTimeFrame = 300;    // Observation window: count violations over 5 minutes
+        $banTtl       = 3600;   // Punishment: block for 1 hour when banned
+        $clientIp     = $_SERVER['REMOTE_ADDR'] ?? null;
+
+        if ($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp)) {
+            throw new TooManyRequestsException("Too many login attempts. Please try again later.");
+        }
+
+        // ... authentication logic
+    }
+}
+```
+
+#### With APCu
+
+```php
+class LoginController
+{
+    public function login(): Response
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+
+        $key          = __METHOD__;
+        $limit        = 5;
+        $ttl          = 60;
+        $maxAttempts  = 3;
+        $banTimeFrame = 300;
+        $banTtl       = 3600;
+        $clientIp     = $_SERVER['REMOTE_ADDR'] ?? null;
+
+        if ($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp)) {
+            throw new TooManyRequestsException("Too many login attempts. Please try again later.");
+        }
+
+        // ... authentication logic
+    }
+}
+```
+
+#### Understanding `$banTimeFrame`
+
+`$banTimeFrame` is the **observation window** that determines how long a violation is
+"remembered". It answers the question: *"How many times has this client exceeded the limit
+in the last N seconds?"*.
+
+```
+$ttl          → How long each rate-limit window lasts (normal behaviour)
+$banTimeFrame → How long violations are tracked (observation window)
+$banTtl       → How long a ban lasts once the client is flagged
+```
+
+The violation counter is a fixed window starting at the **first** violation:
+- It does **not** reset on each new violation (no sliding window).
+- After `$banTimeFrame` seconds it expires and the client is "forgiven".
+
+**Visual example** — `$limit=5, $ttl=60s, $maxAttempts=3, $banTimeFrame=300s, $banTtl=3600s`:
+
+```
+ t=0s     6 rapid requests → 5 allowed, 1 BLOCKED  → violation #1 (counter TTL = 300s)
+ t=60s    Window resets. 6 requests again           → violation #2
+ t=120s   Window resets. 6 requests again           → violation #3  ← ban threshold!
+           violation_count = 3 >= maxAttempts=3
+ t=180s   Window resets. Client tries again:
+           violation_count still alive (expires at t≈300s)
+           → ban applied: new window is 3600s instead of 60s
+           → client blocked for 1 hour
+ t=300s   Violation counter expires (banTimeFrame elapsed from t=0)
+ t=3780s  Ban window expires (t=180 + banTtl=3600)
+ t=3780s  Client can try again with a fresh violation counter
+```
+
+**`$clientIp` and per-client isolation**
+
+When `$clientIp` is provided, each IP address has its own independent violation counter.
+This means banning `192.168.1.1` has no effect on `192.168.1.2`:
+
+```php
+// Client A: banned after 3 violations
+$limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, '192.168.1.1');
+
+// Client B: unaffected, starts from zero violations
+$limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, '192.168.1.2');
+```
+
+Pass `null` to use a **shared global counter** for the key (all clients contribute to
+the same violation count — useful when you want to protect a resource globally regardless
+of origin).
+
 ## Development
+
+### Dev dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| phpunit/phpunit | ^12.1 | test runner |
+| phpstan/phpstan | ^2.1 | static analysis |
+| friendsofphp/php-cs-fixer | ^3.90 | code style |
+| rector/rector | ^2.1 | automated refactoring |
 
 ### Available Scripts
 

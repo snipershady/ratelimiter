@@ -2,8 +2,9 @@
 
 namespace RateLimiter\Service;
 
-use InvalidArgumentException;
 use Predis\Client;
+use RateLimiter\Adapter\PhpRedisAdapter;
+use RateLimiter\Adapter\PredisAdapter;
 use RateLimiter\Enum\CacheEnum;
 
 /*
@@ -24,21 +25,19 @@ use RateLimiter\Enum\CacheEnum;
  */
 
 /**
- * Description of RatelimiterService.
+ * Base class for all rate limiter backends. Provides shared input-validation
+ * helpers and the backward-compatible factory() entry point.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-abstract class AbstractRateLimiterService
+abstract class AbstractRateLimiterService implements RateLimiterInterface
 {
-    private function __construct()
-    {
-    }
-
     /**
      * @param string $key   <p>Name of the function you want to limit. You can use __FUNCTION__ or __METHOD__ inside a subroutine to avoid collision</p>
      * @param int    $limit <p>Limit</p>
      * @param int    $ttl   <p>Timeframe</p>
      */
+    #[\Override]
     abstract public function isLimited(string $key, int $limit, int $ttl): bool;
 
     /**
@@ -54,6 +53,7 @@ abstract class AbstractRateLimiterService
      * @param int         $banTtl       <p>New timeframe for banished client</p>
      * @param string|null $clientIp     <p>Useful to ban a specific client from a function</p>
      */
+    #[\Override]
     abstract public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool;
 
     /**
@@ -61,6 +61,7 @@ abstract class AbstractRateLimiterService
      *
      * @param string $key <p>key to set free from limiter</p>
      */
+    #[\Override]
     abstract public function clearRateLimitedKey(string $key): bool;
 
     /**
@@ -70,8 +71,8 @@ abstract class AbstractRateLimiterService
      */
     protected function checkTTL(int $ttl): void
     {
-        if (!$this->isPositiveNotZeroInteger($ttl)) {
-            throw new \InvalidArgumentException(sprintf('TTL must be positive integer %d given, instead', $ttl));
+        if (!$this->isPositiveInteger($ttl)) {
+            throw new \InvalidArgumentException(sprintf('TTL must be a positive integer, %d given', $ttl));
         }
     }
 
@@ -82,8 +83,8 @@ abstract class AbstractRateLimiterService
      */
     protected function checkTimeFrame(int $timeFrame): void
     {
-        if (!$this->isPositiveNotZeroInteger($timeFrame)) {
-            throw new \InvalidArgumentException(sprintf('TimeFrame must be positive integer %d given, instead', $timeFrame));
+        if (!$this->isPositiveInteger($timeFrame)) {
+            throw new \InvalidArgumentException(sprintf('TimeFrame must be a positive integer, %d given', $timeFrame));
         }
     }
 
@@ -99,28 +100,17 @@ abstract class AbstractRateLimiterService
         }
     }
 
-    /**
-     * <p>Verify if <b>step</b> parameter is positive integer. Throws InvalidArgumentException</p>.
-     *
-     * @throws \InvalidArgumentException
-     */
-    protected function checkStep(int $step): void
-    {
-        if (!$this->isPositiveNotZeroInteger($step)) {
-            throw new \InvalidArgumentException(sprintf('STEP must be positive integer %d given, instead', $step));
-        }
-    }
-
-    public static function factory(CacheEnum $cacheEnum, Client|\Redis|null $redisClient = null): AbstractRateLimiterService
+    public static function factory(CacheEnum $cacheEnum, Client|\Redis|\Memcached|null $client = null): AbstractRateLimiterService
     {
         return match ($cacheEnum) {
             CacheEnum::APCU => new RateLimiterServiceAPCu(),
-            CacheEnum::PHP_REDIS => new RateLimiterServicePhpRedis($redisClient),
-            CacheEnum::REDIS => new RateLimiterServiceRedis($redisClient),
+            CacheEnum::REDIS => new RateLimiterServiceRedis(new PredisAdapter($client)),
+            CacheEnum::PHP_REDIS => new RateLimiterServiceRedis(new PhpRedisAdapter($client)),
+            CacheEnum::MEMCACHED => new RateLimiterServiceMemcached($client),
         };
     }
 
-    private function isPositiveNotZeroInteger(int $value): bool
+    private function isPositiveInteger(int $value): bool
     {
         return $value > 0;
     }

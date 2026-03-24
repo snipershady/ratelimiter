@@ -20,7 +20,7 @@ namespace RateLimiter\Enum;
  */
 
 /**
- * Description of CacheEnum.
+ * Identifies the cache backend to use when building a rate limiter via the factory.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
@@ -29,4 +29,5 @@ enum CacheEnum: int
     case APCU = 1;
     case REDIS = 2;
     case PHP_REDIS = 3;
+    case MEMCACHED = 4;
 }

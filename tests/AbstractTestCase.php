@@ -2,8 +2,6 @@
 
 namespace RateLimiter\Tests;
 
-require_once __DIR__.'/../vendor/autoload.php';
-
 use PHPUnit\Framework\TestCase;
 
 /*
@@ -24,10 +22,34 @@ use PHPUnit\Framework\TestCase;
  */
 
 /**
- * Description of AbstractTestCase.
+ * Base test case. Verifies that APCu is available with apc.enable_cli=1
+ * and registers an error handler that converts PHP errors to exceptions.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 abstract class AbstractTestCase extends TestCase
 {
+    protected int $port = 6379;
+
+    protected string $servername = 'redis-server';
+
+    #[\Override]
+    public static function setUpBeforeClass(): void
+    {
+        set_error_handler(function ($errno, $errstr, $errfile, $errline): false {
+            // error was suppressed with the @-operator
+            if (0 === error_reporting()) {
+                return false;
+            }
+
+            throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
+        });
+        try {
+            apcu_cache_info();
+        } catch (\Exception $exception) {
+            echo PHP_EOL.$exception->getMessage().PHP_EOL;
+            echo PHP_EOL.'[APCU]'.PHP_EOL.' apc.enable_cli=1'.PHP_EOL;
+            exit;
+        }
+    }
 }
