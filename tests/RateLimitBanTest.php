@@ -64,20 +64,24 @@ class RateLimitBanTest extends AbstractTestCase
         $clientIp = null;
 
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result); // first request: not limited
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertTrue($result);  // violation_count = 1
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertTrue($result);  // violation_count = 2
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
-        $this->assertEquals($ttl, $this->redis->ttl($key));
+        $this->assertTrue($result);  // violation_count = 3 = maxAttempts
+        $this->assertSame($ttl, $this->redis->ttl($key));
 
         sleep(3); // let ttl expire to enable the ban ttl
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result); // ban window opens: first request of new window is free
 
-        $this->assertEquals($banTtl, $this->redis->ttl($key));
+        $this->assertSame($banTtl, $this->redis->ttl($key));
         sleep($banTtl + 1); // let expire ban ttl
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
-
-        $this->assertEquals($ttl, $this->redis->ttl($key)); // ttl is again the nominal value not banned
-        $this->assertFalse($result);
+        $this->assertFalse($result); // ban expired: back to normal ttl window
+        $this->assertSame($ttl, $this->redis->ttl($key));
     }
 
     public function testRateLimitWithBanRedisTwo(): void
@@ -105,7 +109,7 @@ class RateLimitBanTest extends AbstractTestCase
         $this->assertFalse($result);
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
         $this->assertTrue($result);
-        $this->assertTrue($this->redis->ttl($key) === $banTtl);
+        $this->assertSame($banTtl, $this->redis->ttl($key));
         sleep($ttl + 1);
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
         $this->assertTrue($result);
@@ -139,11 +143,11 @@ class RateLimitBanTest extends AbstractTestCase
         $this->assertFalse($result);
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
         $this->assertTrue($result);
-        $this->assertTrue(apcu_key_info($key)['ttl'] === $banTtl);
+        $this->assertSame($banTtl, apcu_key_info($key)['ttl']);
         sleep($ttl + 1);
         $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
         $this->assertTrue($result);
-        $this->assertTrue(apcu_key_info($key)['ttl'] === $banTtl);
+        $this->assertSame($banTtl, apcu_key_info($key)['ttl']);
     }
 
     // -------------------------------------------------------------------------

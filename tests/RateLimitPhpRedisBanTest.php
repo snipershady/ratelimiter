@@ -74,16 +74,21 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
         $clientIp = null;
 
         // 4 requests: 1 not limited, 3 limited --> violation_count = 3
-        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
-        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
-        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
-        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result); // first request: not limited
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertTrue($result);  // violation_count = 1
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertTrue($result);  // violation_count = 2
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertTrue($result);  // violation_count = 3 = maxAttempts
         $this->assertSame($ttl, $this->redis->ttl($key));
 
         sleep(3); // let normal TTL expire to start a new window
 
         // violation_count = 3 >= maxAttempts --> banTtl applied on new window key
-        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result); // ban window opens: first request of new window is free
         $this->assertSame($banTtl, $this->redis->ttl($key));
 
         sleep($banTtl + 1); // let ban expire
