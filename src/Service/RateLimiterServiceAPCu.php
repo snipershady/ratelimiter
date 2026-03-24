@@ -46,12 +46,12 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         $this->checkTimeFrame($banTimeFrame);
         $violationCountKey = null !== $clientIp ? 'BAN_violation_count_'.$key.'_'.$clientIp : 'BAN_violation_count_'.$key;
         $needBan = (int) apcu_fetch($violationCountKey);
-
+        $actual = 0;
         if ($needBan >= $maxAttempts) {
             $ttl = $banTtl;
         }
-        $actual = $this->isLimited($key, $limit, $ttl);
-        if ($actual) {
+        $isLImited = $this->isLimited($key, $limit, $ttl);
+        if ($isLImited) {
             $step = 1;
             // TTL = $banTimeFrame: il counter di violazioni scade dopo $banTimeFrame secondi
             // dalla PRIMA violazione (apcu_inc imposta TTL solo alla creazione. Fixed Window)
@@ -75,7 +75,7 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     private function getActual(string $key, int $step, int $ttl): int
     {
         $success = null;
-        if (empty(apcu_exists($key))) {
+        if (!apcu_exists($key)) {
             do {
                 $actual = (int) apcu_inc($key, $step, $success, $ttl);
             } while (!$success);
