@@ -56,7 +56,9 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         if ($actual) {
             $step = 1;
             $success = null;
-            $actual = $this->getActual($violationCountKey, $step, $success, $banTtl);
+            // TTL = $banTimeFrame: il counter di violazioni scade dopo $banTimeFrame secondi
+            // dalla PRIMA violazione (apcu_inc imposta TTL solo alla creazione. Fixed Window)
+            $actual = $this->getActual($violationCountKey, $step, $success, $banTimeFrame);
         }
 
         return (int) $actual > 0;
