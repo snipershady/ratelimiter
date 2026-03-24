@@ -3,6 +3,8 @@
 namespace RateLimiter\Service;
 
 use Predis\Client;
+use RateLimiter\Adapter\PhpRedisAdapter;
+use RateLimiter\Adapter\PredisAdapter;
 use RateLimiter\Enum\CacheEnum;
 
 /*
@@ -101,8 +103,8 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
     {
         return match ($cacheEnum) {
             CacheEnum::APCU => new RateLimiterServiceAPCu(),
-            CacheEnum::PHP_REDIS => new RateLimiterServicePhpRedis($redisClient),
-            CacheEnum::REDIS => new RateLimiterServiceRedis($redisClient),
+            CacheEnum::REDIS => new RateLimiterServiceRedis(new PredisAdapter($redisClient)),
+            CacheEnum::PHP_REDIS => new RateLimiterServiceRedis(new PhpRedisAdapter($redisClient)),
         };
     }
 

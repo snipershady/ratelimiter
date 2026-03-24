@@ -35,7 +35,7 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
 
         $actual = $this->getActual($key, $step, $ttl);
 
-        return (int) $actual > $limit;
+        return $actual > $limit;
     }
 
     #[\Override]
@@ -58,7 +58,7 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
             $actual = $this->getActual($violationCountKey, $step, $banTimeFrame);
         }
 
-        return (int) $actual > 0;
+        return $actual > 0;
     }
 
     #[\Override]

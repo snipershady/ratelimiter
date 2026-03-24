@@ -2,7 +2,7 @@
 
 namespace RateLimiter\Service;
 
-use Predis\Client;
+use RateLimiter\Adapter\RedisAdapterInterface;
 
 /*
  * Copyright (C) 2022 Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
@@ -22,38 +22,50 @@ use Predis\Client;
  */
 
 /**
- * Description of RateLimiterServiceRedis.
+ * Redis-backed rate limiter. Works with both the Predis library and the
+ * php-redis native extension via the RedisAdapterInterface abstraction.
+ *
+ * The correct adapter is injected by AbstractRateLimiterService::factory(),
+ * so callers never need to instantiate this class directly.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 class RateLimiterServiceRedis extends AbstractRateLimiterService
 {
-    public function __construct(private readonly Client $redis)
+    public function __construct(private readonly RedisAdapterInterface $adapter)
     {
     }
 
     /**
      * {@inheritDoc}
-     * <p>The strategy with the Redis instance is more secure than APCu, because of the transaction that grants all-or-nothing execution</p>.
+     *
+     * Redis INCR is natively atomic, so no MULTI/EXEC is needed for the
+     * increment itself. A transaction is used only for the EXPIRE + GET pair
+     * on the first request of each window, ensuring the TTL is bound to the
+     * key before any concurrent reader can observe it without an expiry.
      */
     #[\Override]
     public function isLimited(string $key, int $limit, int $ttl): bool
     {
         $this->checkKey($key);
         $this->checkTTL($ttl);
-        $actualArray = $this->redis->transaction()->incr($key)->get($key)->execute();
-        $actual = is_array($actualArray) && array_key_exists(0, $actualArray) ? (int) $actualArray[0] : 0;
-        if ($actual <= 1) {
-            $actual = (int) $this->redis->transaction()->expire($key, $ttl)->get($key)->execute()[1];
+
+        $count = $this->adapter->increment($key);
+
+        if ($count <= 1) {
+            $count = $this->adapter->expireAndGet($key, $ttl);
         }
 
-        return $actual > $limit;
+        return $count > $limit;
     }
 
     /**
      * {@inheritDoc}
      *
-     * <p>The strategy with the Redis instance is more secure than APCu, because of the transaction that grants all-or-nothing execution</p>
+     * The violation counter uses a fixed observation window ($banTimeFrame).
+     * Its TTL is set only on the first violation and never renewed, so the
+     * window starts at the first offence and expires $banTimeFrame seconds
+     * later regardless of subsequent activity.
      */
     #[\Override]
     public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool
@@ -61,23 +73,22 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
         $this->checkTTL($banTtl);
         $this->checkTTL($ttl);
         $this->checkTimeFrame($banTimeFrame);
-        $violationCountKey = null !== $clientIp ? 'BAN_violation_count_'.$key.'_'.$clientIp : 'BAN_violation_count_'.$key;
-        $needBan = (int) $this->redis->get($violationCountKey);
 
-        if ($needBan >= $maxAttempts) {
+        $violationCountKey = null !== $clientIp
+            ? 'BAN_violation_count_'.$key.'_'.$clientIp
+            : 'BAN_violation_count_'.$key;
+
+        if ($this->adapter->get($violationCountKey) >= $maxAttempts) {
             $ttl = $banTtl;
         }
+
         $actual = $this->isLimited($key, $limit, $ttl);
 
         if ($actual) {
-            $violationData = $this->redis->transaction()->incr($violationCountKey)->execute();
-            $violationCount = (int) ($violationData[0] ?? 0);
+            $violationCount = $this->adapter->increment($violationCountKey);
 
-            // Imposto il TTL SOLO alla prima violazione (finestra fissa = $banTimeFrame secondi)
-            // Le violazioni successive incrementano senza rinnovare la finestra,
-            // coerente con il comportamento APCu
             if ($violationCount <= 1) {
-                $this->redis->expire($violationCountKey, $banTimeFrame);
+                $this->adapter->expire($violationCountKey, $banTimeFrame);
             }
         }
 
@@ -89,6 +100,6 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
     {
         $this->checkKey($key);
 
-        return (bool) $this->redis->del($key);
+        return (bool) $this->adapter->del($key);
     }
 }
