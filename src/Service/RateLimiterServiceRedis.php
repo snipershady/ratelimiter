@@ -22,16 +22,14 @@ use Predis\Client;
  */
 
 /**
- * Description of RatelimiterService.
+ * Description of RateLimiterServiceRedis.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 class RateLimiterServiceRedis extends AbstractRateLimiterService
 {
-
     public function __construct(private readonly Client $redis)
     {
-        
     }
 
     /**
@@ -63,16 +61,24 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
         $this->checkTTL($banTtl);
         $this->checkTTL($ttl);
         $this->checkTimeFrame($banTimeFrame);
-        $violationCountKey = null !== $clientIp ? 'BAN_violation_count_' . $key . '_' . $clientIp : 'BAN_violation_count_' . $key;
+        $violationCountKey = null !== $clientIp ? 'BAN_violation_count_'.$key.'_'.$clientIp : 'BAN_violation_count_'.$key;
         $needBan = (int) $this->redis->get($violationCountKey);
-        
+
         if ($needBan >= $maxAttempts) {
             $ttl = $banTtl;
         }
         $actual = $this->isLimited($key, $limit, $ttl);
 
         if ($actual) {
-            $this->redis->transaction()->incr($violationCountKey)->expire($violationCountKey, $banTtl)->get($violationCountKey)->execute();
+            $violationData = $this->redis->transaction()->incr($violationCountKey)->execute();
+            $violationCount = (int) ($violationData[0] ?? 0);
+
+            // Imposto il TTL SOLO alla prima violazione (finestra fissa = $banTimeFrame secondi)
+            // Le violazioni successive incrementano senza rinnovare la finestra,
+            // coerente con il comportamento APCu
+            if ($violationCount <= 1) {
+                $this->redis->expire($violationCountKey, $banTimeFrame);
+            }
         }
 
         return $actual;

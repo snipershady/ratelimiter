@@ -24,7 +24,7 @@ use RateLimiter\Enum\CacheEnum;
  */
 
 /**
- * Description of RatelimiterService.
+ * Description of AbstractRateLimiterService.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
@@ -73,8 +73,8 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
      */
     protected function checkTTL(int $ttl): void
     {
-        if (!$this->isPositiveNotZeroInteger($ttl)) {
-            throw new \InvalidArgumentException(sprintf('TTL must be positive integer %d given, instead', $ttl));
+        if (!$this->isPositiveInteger($ttl)) {
+            throw new \InvalidArgumentException(sprintf('TTL must be a positive integer, %d given', $ttl));
         }
     }
 
@@ -85,7 +85,7 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
      */
     protected function checkTimeFrame(int $timeFrame): void
     {
-        if (!$this->isPositiveNotZeroInteger($timeFrame)) {
+        if (!$this->isPositiveInteger($timeFrame)) {
             throw new \InvalidArgumentException(sprintf('TimeFrame must be positive integer %d given, instead', $timeFrame));
         }
     }
@@ -111,7 +111,7 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
         };
     }
 
-    private function isPositiveNotZeroInteger(int $value): bool
+    private function isPositiveInteger(int $value): bool
     {
         return $value > 0;
     }

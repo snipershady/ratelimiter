@@ -32,8 +32,6 @@ use RateLimiter\Service\AbstractRateLimiterService;
  */
 class RateLimitBanTest extends AbstractTestCase
 {
-    private int $port = 6379;
-    private string $servername = 'redis-server';
     private Client $redis;
 
     #[\Override]

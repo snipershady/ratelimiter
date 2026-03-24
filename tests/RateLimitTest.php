@@ -32,29 +32,7 @@ use RateLimiter\Service\AbstractRateLimiterService;
  */
 class RateLimitTest extends AbstractTestCase
 {
-    private int $port = 6379;
-    private string $servername = 'redis-server';
     private Client $redis;
-
-    #[\Override]
-    public static function setUpBeforeClass(): void
-    {
-        set_error_handler(function ($errno, $errstr, $errfile, $errline): false {
-            // error was suppressed with the @-operator
-            if (0 === error_reporting()) {
-                return false;
-            }
-
-            throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
-        });
-        try {
-            apcu_cache_info();
-        } catch (\Exception $ex) {
-            echo PHP_EOL.$ex->getMessage().PHP_EOL;
-            echo PHP_EOL.'[APCU]'.PHP_EOL.' apc.enable_cli=1'.PHP_EOL;
-            exit;
-        }
-    }
 
     #[\Override]
     public function setUp(): void

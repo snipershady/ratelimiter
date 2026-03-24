@@ -20,16 +20,14 @@ namespace RateLimiter\Service;
  */
 
 /**
- * Description of RatelimiterService.
+ * Description of RateLimiterServicePhpRedis.
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
 class RateLimiterServicePhpRedis extends AbstractRateLimiterService
 {
-
     public function __construct(private readonly \Redis $redis)
     {
-        
     }
 
     /**
@@ -61,16 +59,23 @@ class RateLimiterServicePhpRedis extends AbstractRateLimiterService
         $this->checkTTL($banTtl);
         $this->checkTTL($ttl);
         $this->checkTimeFrame($banTimeFrame);
-        $violationCountKey = null !== $clientIp ? 'BAN_violation_count_' . $key . '_' . $clientIp : 'BAN_violation_count_' . $key;
+        $violationCountKey = null !== $clientIp ? 'BAN_violation_count_'.$key.'_'.$clientIp : 'BAN_violation_count_'.$key;
         $needBan = (int) $this->redis->get($violationCountKey);
-        
+
         if ($needBan >= $maxAttempts) {
             $ttl = $banTtl;
         }
         $actual = $this->isLimited($key, $limit, $ttl);
 
         if ($actual) {
-            $this->redis->multi()->incr($violationCountKey)->expire($violationCountKey, $banTtl)->get($violationCountKey)->exec();
+            // Incremento atomico del violation counter
+            $violationData = $this->redis->multi()->incr($violationCountKey)->exec();
+            $violationCount = (int) ($violationData[0] ?? 0);
+
+            // Imposto il TTL SOLO alla prima violazione (finestra fissa = $banTimeFrame secondi)
+            if ($violationCount <= 1) {
+                $this->redis->expire($violationCountKey, $banTimeFrame);
+            }
         }
 
         return $actual;
