@@ -30,9 +30,9 @@
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.90",
-        "phpunit/phpunit": "^12.1",
-        "phpstan/phpstan": "^2.1",
-        "rector/rector": "^2.1.2"
+        "phpunit/phpunit": "^13.2",
+        "phpstan/phpstan": "^2.2",
+        "rector/rector": "^2.4.5"
     },
     "scripts": {
         "test": "vendor/bin/phpunit",
