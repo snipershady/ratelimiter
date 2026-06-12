@@ -26,8 +26,31 @@ namespace RateLimiter\Enum;
  */
 enum CacheEnum: int
 {
+    /**
+     * APCu in-memory cache.
+     * Requires the PHP APCu extension: ext-apcu (e.g. "ext-apcu": "*" in composer.json).
+     * No additional PHP class or external library needed beyond the extension itself.
+     */
     case APCU = 1;
+
+    /**
+     * Redis cache via the Predis client library.
+     * Requires the Composer package predis/predis (e.g. "predis/predis": "*" in composer.json).
+     * No native PHP extension needed; the client is pure PHP.
+     */
     case REDIS = 2;
+
+    /**
+     * Redis cache via the native PHP Redis extension.
+     * Requires the PHP Redis extension: ext-redis (e.g. "ext-redis": "*" in composer.json).
+     * Exposes the native \Redis class; no Composer package needed.
+     */
     case PHP_REDIS = 3;
+
+    /**
+     * Memcached cache via the native PHP Memcached extension.
+     * Requires the PHP Memcached extension: ext-memcached (e.g. "ext-memcached": "*" in composer.json).
+     * Exposes the native \Memcached class; no Composer package needed.
+     */
     case MEMCACHED = 4;
 }

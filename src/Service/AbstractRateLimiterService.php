@@ -104,9 +104,15 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
     {
         return match ($cacheEnum) {
             CacheEnum::APCU => new RateLimiterServiceAPCu(),
-            CacheEnum::REDIS => new RateLimiterServiceRedis(new PredisAdapter($client)),
-            CacheEnum::PHP_REDIS => new RateLimiterServiceRedis(new PhpRedisAdapter($client)),
-            CacheEnum::MEMCACHED => new RateLimiterServiceMemcached($client),
+            CacheEnum::REDIS => new RateLimiterServiceRedis(
+                new PredisAdapter($client instanceof Client ? $client : throw new \InvalidArgumentException('Predis\Client required for REDIS backend'))
+            ),
+            CacheEnum::PHP_REDIS => new RateLimiterServiceRedis(
+                new PhpRedisAdapter($client instanceof \Redis ? $client : throw new \InvalidArgumentException('\Redis instance required for PHP_REDIS backend'))
+            ),
+            CacheEnum::MEMCACHED => new RateLimiterServiceMemcached(
+                $client instanceof \Memcached ? $client : throw new \InvalidArgumentException('\Memcached instance required for MEMCACHED backend')
+            ),
         };
     }
 
