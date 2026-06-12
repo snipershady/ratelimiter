@@ -39,16 +39,16 @@ Native PHP extensions are not managed by Composer. Install only the ones needed 
 ### Debian / Ubuntu
 
 ```bash
+PHP_VER=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
+
 # APCu
-apt-get install php8.3-apcu
+apt-get install php${PHP_VER}-apcu
 
 # Redis (php-redis native extension)
-apt-get install php8.3-redis
+apt-get install php${PHP_VER}-redis
 
 # Memcached (php-memcached native extension — note the 'd')
-apt-get install php8.3-memcached
-
-# Replace "8.3" with the PHP version installed on your system if newer.
+apt-get install php${PHP_VER}-memcached
 ```
 
 ### CLI Usage
@@ -142,7 +142,7 @@ Remove a rate limit key, resetting its counter.
 
 ## Usage Examples
 
-### Dependencies
+### Common imports
 
 ```php
 use Predis\Client;
@@ -150,178 +150,187 @@ use RateLimiter\Enum\CacheEnum;
 use RateLimiter\Service\AbstractRateLimiterService;
 ```
 
-### APCu Example
+---
+
+### APCu
+
+No external server required. Ideal for single-server deployments or CLI tools.
 
 ```php
-class Foo
-{
-    public function controllerYouWantToRateLimit(): Response
-    {
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = __METHOD__;  // Name of the function you want to rate limit
-        $limit = 2;         // Maximum attempts before the limit
-        $ttl = 3;           // Time window in seconds
+$limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+$key     = __METHOD__;
+$limit   = 2;
+$ttl     = 3;
 
-        if ($limiter->isLimited($key, $limit, $ttl)) {
-            throw new Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
-        }
-
-        // ... your code
-    }
+if ($limiter->isLimited($key, $limit, $ttl)) {
+    throw new \Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
 }
 ```
 
-### Redis Example (Predis)
+---
+
+### Redis — Predis
+
+Pure-PHP Redis client; no native extension required.
 
 ```php
-class Foo
-{
-    public function controllerYouWantToRateLimit(): Response
-    {
-        $redis = new Client([
-            'scheme' => 'tcp',
-            'host' => '192.168.0.100',
-            'port' => 6379,
-            'persistent' => true,
-        ]);
+$redis = new Client([
+    'scheme'     => 'tcp',
+    'host'       => '192.168.0.100',
+    'port'       => 6379,
+    'persistent' => true,
+]);
 
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
-        $key = __METHOD__;
-        $limit = 2;
-        $ttl = 3;
+$limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+$key     = __METHOD__;
+$limit   = 2;
+$ttl     = 3;
 
-        if ($limiter->isLimited($key, $limit, $ttl)) {
-            throw new Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
-        }
-
-        // ... your code
-    }
+if ($limiter->isLimited($key, $limit, $ttl)) {
+    throw new \Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
 }
 ```
 
-### Redis Example (PhpRedis)
+---
+
+### Redis — PhpRedis
+
+Native `ext-redis` extension; better raw performance than Predis.
 
 ```php
-class Foo
-{
-    public function controllerYouWantToRateLimit(): Response
-    {
-        $redis = new \Redis();
-        $redis->pconnect(
-            '192.168.0.100',        // host
-            6379,                   // port
-            2,                      // connect timeout
-            'persistent_id_rl'      // persistent_id
-        );
+$redis = new \Redis();
+$redis->pconnect(
+    '192.168.0.100',
+    6379,
+    2,
+    'persistent_id_rl'
+);
 
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $redis);
-        $key = __METHOD__;
-        $limit = 2;
-        $ttl = 3;
+$limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $redis);
+$key     = __METHOD__;
+$limit   = 2;
+$ttl     = 3;
 
-        if ($limiter->isLimited($key, $limit, $ttl)) {
-            throw new Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
-        }
-
-        // ... your code
-    }
+if ($limiter->isLimited($key, $limit, $ttl)) {
+    throw new \Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
 }
 ```
 
-### Memcached Example
+---
 
-Requires `ext-memcached` (`apt-get install php8.4-memcached`).
+### Memcached
+
+Requires `ext-memcached`. Passing a `persistent_id` reuses the connection pool across
+requests; the `getServerList()` guard prevents registering the same server twice.
 
 ```php
-class Foo
-{
-    public function controllerYouWantToRateLimit(): Response
-    {
-        $memcached = new \Memcached('persistent_id_rl');
-        if (!$memcached->getServerList()) {
-            $memcached->addServer('192.168.0.100', 11211);
-        }
+$memcached = new \Memcached('persistent_id_rl');
+if (!$memcached->getServerList()) {
+    $memcached->addServer('192.168.0.100', 11211);
+}
 
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $memcached);
-        $key = __METHOD__;
-        $limit = 2;
-        $ttl = 3;
+$limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $memcached);
+$key     = __METHOD__;
+$limit   = 2;
+$ttl     = 3;
 
-        if ($limiter->isLimited($key, $limit, $ttl)) {
-            throw new Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
-        }
-
-        // ... your code
-    }
+if ($limiter->isLimited($key, $limit, $ttl)) {
+    throw new \Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
 }
 ```
 
-> **Note:** passing a `persistent_id` to `new \Memcached()` reuses the connection pool
-> across requests. The `getServerList()` guard prevents adding the same server twice.
+---
 
 ### Rate Limit with Ban
 
-Use this when you want to progressively punish repeat offenders with longer block windows.
-Normal rate limiting resets every `$ttl` seconds. With ban support, a client that repeatedly
-triggers the limit within the `$banTimeFrame` observation window gets its block window
-extended to `$banTtl` seconds instead.
-
-#### With Predis
-
-```php
-class LoginController
-{
-    public function login(): Response
-    {
-        $redis = new Client([
-            'scheme' => 'tcp',
-            'host'   => '192.168.0.100',
-            'port'   => 6379,
-            'persistent' => true,
-        ]);
-
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
-
-        $key          = __METHOD__;
-        $limit        = 5;      // Allow 5 login attempts per window
-        $ttl          = 60;     // Normal window: 60 seconds
-        $maxAttempts  = 3;      // Ban after 3 violations within $banTimeFrame
-        $banTimeFrame = 300;    // Observation window: count violations over 5 minutes
-        $banTtl       = 3600;   // Punishment: block for 1 hour when banned
-        $clientIp     = $_SERVER['REMOTE_ADDR'] ?? null;
-
-        if ($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp)) {
-            throw new TooManyRequestsException("Too many login attempts. Please try again later.");
-        }
-
-        // ... authentication logic
-    }
-}
-```
+Use `isLimitedWithBan` when you want to progressively punish repeat offenders with longer
+block windows. The only difference between backends is the factory call — the parameters
+and behaviour are identical.
 
 #### With APCu
 
 ```php
-class LoginController
-{
-    public function login(): Response
-    {
-        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+$limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
 
-        $key          = __METHOD__;
-        $limit        = 5;
-        $ttl          = 60;
-        $maxAttempts  = 3;
-        $banTimeFrame = 300;
-        $banTtl       = 3600;
-        $clientIp     = $_SERVER['REMOTE_ADDR'] ?? null;
+$key          = __METHOD__;
+$limit        = 5;
+$ttl          = 60;
+$maxAttempts  = 3;
+$banTimeFrame = 300;
+$banTtl       = 3600;
+$clientIp     = $_SERVER['REMOTE_ADDR'] ?? null;
 
-        if ($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp)) {
-            throw new TooManyRequestsException("Too many login attempts. Please try again later.");
-        }
+if ($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp)) {
+    throw new \RuntimeException("Too many login attempts. Please try again later.");
+}
+```
 
-        // ... authentication logic
-    }
+#### With Predis
+
+```php
+$redis = new Client([
+    'scheme'     => 'tcp',
+    'host'       => '192.168.0.100',
+    'port'       => 6379,
+    'persistent' => true,
+]);
+
+$limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $redis);
+
+$key          = __METHOD__;
+$limit        = 5;
+$ttl          = 60;
+$maxAttempts  = 3;
+$banTimeFrame = 300;
+$banTtl       = 3600;
+$clientIp     = $_SERVER['REMOTE_ADDR'] ?? null;
+
+if ($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp)) {
+    throw new \RuntimeException("Too many login attempts. Please try again later.");
+}
+```
+
+#### With PhpRedis
+
+```php
+$redis = new \Redis();
+$redis->pconnect('192.168.0.100', 6379, 2, 'persistent_id_rl');
+
+$limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $redis);
+
+$key          = __METHOD__;
+$limit        = 5;
+$ttl          = 60;
+$maxAttempts  = 3;
+$banTimeFrame = 300;
+$banTtl       = 3600;
+$clientIp     = $_SERVER['REMOTE_ADDR'] ?? null;
+
+if ($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp)) {
+    throw new \RuntimeException("Too many login attempts. Please try again later.");
+}
+```
+
+#### With Memcached
+
+```php
+$memcached = new \Memcached('persistent_id_rl');
+if (!$memcached->getServerList()) {
+    $memcached->addServer('192.168.0.100', 11211);
+}
+
+$limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $memcached);
+
+$key          = __METHOD__;
+$limit        = 5;
+$ttl          = 60;
+$maxAttempts  = 3;
+$banTimeFrame = 300;
+$banTtl       = 3600;
+$clientIp     = $_SERVER['REMOTE_ADDR'] ?? null;
+
+if ($limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp)) {
+    throw new \RuntimeException("Too many login attempts. Please try again later.");
 }
 ```
 
@@ -357,10 +366,10 @@ The violation counter is a fixed window starting at the **first** violation:
  t=3780s  Client can try again with a fresh violation counter
 ```
 
-**`$clientIp` and per-client isolation**
+#### Per-client isolation with `$clientIp`
 
 When `$clientIp` is provided, each IP address has its own independent violation counter.
-This means banning `192.168.1.1` has no effect on `192.168.1.2`:
+Banning `192.168.1.1` has no effect on `192.168.1.2`:
 
 ```php
 // Client A: banned after 3 violations
@@ -373,6 +382,30 @@ $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $ban
 Pass `null` to use a **shared global counter** for the key (all clients contribute to
 the same violation count — useful when you want to protect a resource globally regardless
 of origin).
+
+---
+
+### Clearing a Rate Limit Key
+
+`clearRateLimitedKey` resets the counter for a given key immediately. Useful after a
+successful authentication, a manual unban, or during testing.
+
+```php
+// Works identically for every backend — swap the factory call as needed.
+$limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+
+$key = 'App\Controller\LoginController::login';
+
+if ($limiter->clearRateLimitedKey($key)) {
+    // Counter reset; the next request will be treated as the first in a new window.
+}
+```
+
+When using `isLimitedWithBan`, only the request counter is cleared by this method. The
+violation counter (used to track bans) lives under a separate internal key and is managed
+automatically by the library.
+
+---
 
 ## Development
 
