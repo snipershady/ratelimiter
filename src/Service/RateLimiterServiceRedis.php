@@ -44,7 +44,15 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
      * Redis INCR is natively atomic, so no MULTI/EXEC is needed for the
      * increment itself. A transaction is used only for the EXPIRE + GET pair
      * on the first request of each window, ensuring the TTL is bound to the
-     * key before any concurrent reader can observe it without an expiry.
+     * key before any concurrent reader can observe it without an expiry, and
+     * picking up any concurrent increments that raced in during that window.
+     *
+     * Every other request in the window additionally calls expire() with
+     * EXPIRE ... NX, mirroring recordViolation()'s self-healing pattern: it
+     * is a no-op once the TTL is already bound, but heals a key left
+     * permanently without one if the "first request" above ever crashed
+     * between its INCR and expireAndGet() call — otherwise that key would
+     * stay stuck above $limit forever, since INCR alone never sets a TTL.
      */
     #[\Override]
     public function isLimited(string $key, int $limit, int $ttl): bool
@@ -56,6 +64,8 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
 
         if ($count <= 1) {
             $count = $this->adapter->expireAndGet($key, $ttl);
+        } else {
+            $this->adapter->expire($key, $ttl);
         }
 
         return $count > $limit;

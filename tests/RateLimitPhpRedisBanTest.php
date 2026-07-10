@@ -286,4 +286,29 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
         $this->assertFalse($result);
         $this->assertSame($ttl, $this->redis->ttl($key));
     }
+
+    // -------------------------------------------------------------------------
+    // Backend failure handling
+    // -------------------------------------------------------------------------
+
+    /**
+     * Regression test for PhpRedisAdapter::get(): \Redis::get() returns false
+     * both for a legitimate cache miss and for a genuine WRONGTYPE error, with
+     * no way to tell them apart from the return value alone. Before the fix,
+     * getViolationCount() treated a WRONGTYPE error on the violation counter
+     * the same as "no violations yet", silently disabling the ban feature for
+     * that client instead of failing closed.
+     */
+    public function testPhpRedisFailsClosedOnWrongTypeViolationCounter(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
+        $key = 'test_wrongtype_ban_' . microtime(true);
+        $violationCountKey = 'BAN_violation_count_' . $key;
+
+        // A list value makes GET fail with WRONGTYPE instead of a numeric result.
+        $this->redis->rPush($violationCountKey, 'not_a_counter');
+
+        $this->expectException(\RuntimeException::class);
+        $limiter->isLimitedWithBan($key, 5, 60, 3, 30, 120, null);
+    }
 }

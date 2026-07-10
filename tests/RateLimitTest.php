@@ -275,6 +275,36 @@ class RateLimitTest extends AbstractTestCase
         $this->assertTrue($result);
     }
 
+    /**
+     * Regression test for RateLimiterServiceRedis::isLimited(): before the
+     * fix, only the very first request in a window (count <= 1) ever called
+     * expire(), via the expireAndGet() transaction. If that first request's
+     * process crashed between INCR and expireAndGet(), the key was left
+     * incremented but with no TTL at all, permanently stuck above $limit
+     * forever. isLimited() now also calls expire() with EXPIRE ... NX on
+     * every subsequent request, healing a key a prior crash left without a
+     * TTL, mirroring the same fix already applied to the violation counter
+     * in recordViolation().
+     */
+    public function testMainCounterSelfHealsMissingTtlRedis(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
+        $key = 'test_selfheal_main_' . microtime(true);
+
+        // Simulate a crash that incremented the counter but never reached
+        // the expireAndGet() call: the key exists with no TTL at all.
+        $this->redis->incr($key);
+        $this->assertSame(-1, $this->redis->ttl($key)); // -1 = key exists, no TTL
+
+        $limit = 5;
+        $ttl = 30;
+
+        $limiter->isLimited($key, $limit, $ttl);
+
+        // The counter must now be self-healed with a real TTL instead of living forever.
+        $this->assertGreaterThan(0, $this->redis->ttl($key));
+    }
+
     public function testLimitApcuAndDeleteKey(): void
     {
         // $this->markTestSkipped();

@@ -218,4 +218,55 @@ class RateLimitPhpRedisTest extends AbstractTestCase
         $result = $limiter->isLimited($key, $limit, $ttl);
         $this->assertTrue($result);
     }
+
+    // -------------------------------------------------------------------------
+    // Main counter TTL self-healing
+    // -------------------------------------------------------------------------
+
+    /**
+     * Same self-healing regression as RateLimitTest::testMainCounterSelfHealsMissingTtlRedis,
+     * for the native \Redis extension backend.
+     */
+    public function testMainCounterSelfHealsMissingTtlPhpRedis(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
+        $key = 'test_selfheal_main_' . microtime(true);
+
+        // Simulate a crash that incremented the counter but never reached
+        // the expireAndGet() call: the key exists with no TTL at all.
+        $this->redis->incr($key);
+        $this->assertSame(-1, $this->redis->ttl($key)); // -1 = key exists, no TTL
+
+        $limit = 5;
+        $ttl = 30;
+
+        $limiter->isLimited($key, $limit, $ttl);
+
+        // The counter must now be self-healed with a real TTL instead of living forever.
+        $this->assertGreaterThan(0, $this->redis->ttl($key));
+    }
+
+    // -------------------------------------------------------------------------
+    // Backend failure handling
+    // -------------------------------------------------------------------------
+
+    /**
+     * Regression test for PhpRedisAdapter::increment(): \Redis::incr() returns
+     * false (not an exception) on a WRONGTYPE error, instead of throwing like
+     * Predis does for the same condition. Before the fix, that false was
+     * silently cast to 0 and treated as "first request ever", letting traffic
+     * through unlimited (fail-open). A rate limiter is a security control, so
+     * a real backend error must now fail closed by throwing instead.
+     */
+    public function testPhpRedisFailsClosedOnWrongTypeIncrement(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
+        $key = 'test_wrongtype_' . microtime(true) . '_' . __METHOD__;
+
+        // A list value makes INCR fail with WRONGTYPE instead of a numeric result.
+        $this->redis->rPush($key, 'not_a_counter');
+
+        $this->expectException(\RuntimeException::class);
+        $limiter->isLimited($key, 5, 60);
+    }
 }
