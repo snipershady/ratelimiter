@@ -96,7 +96,7 @@ class RateLimitMemcachedTest extends AbstractTestCase
     {
         $limit = 2;
         $ttl = 3;
-        $key = 'test' . microtime(true);
+        $key = 'test' . bin2hex(random_bytes(32));
         $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
 
         $this->assertFalse($limiter->isLimited($key, $limit, $ttl));
@@ -115,7 +115,7 @@ class RateLimitMemcachedTest extends AbstractTestCase
     public function testLimitMemcached(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
-        $key = 'test' . microtime(true);
+        $key = 'test' . bin2hex(random_bytes(32));
         $limit = 2;
         $ttl = 3;
         $countFalse = 0;
@@ -135,7 +135,7 @@ class RateLimitMemcachedTest extends AbstractTestCase
     public function testLimitMemcachedAndDeleteKey(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
-        $key = 'test' . microtime(true);
+        $key = 'test' . bin2hex(random_bytes(32));
         $limit = 1;
         $ttl = 60;
 
@@ -163,7 +163,7 @@ class RateLimitMemcachedTest extends AbstractTestCase
     public function testRateLimitWithBanMemcached(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
-        $key = 'test' . microtime(true);
+        $key = 'test' . bin2hex(random_bytes(32));
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -204,7 +204,7 @@ class RateLimitMemcachedTest extends AbstractTestCase
     public function testRateLimitWithBanMemcachedTwo(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
-        $key = 'test' . microtime(true);
+        $key = 'test' . bin2hex(random_bytes(32));
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -259,7 +259,7 @@ class RateLimitMemcachedTest extends AbstractTestCase
     public function testBanTimeFrameExpirationResetsViolationsMemcached(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
-        $key = 'test_btf_' . microtime(true);
+        $key = 'test_btf_' . bin2hex(random_bytes(32));
         $limit = 1;
         $ttl = 2;
         $maxAttempts = 2;
@@ -307,7 +307,7 @@ class RateLimitMemcachedTest extends AbstractTestCase
     public function testClientIpIsolationMemcached(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
-        $key = 'test_ip_iso_' . microtime(true);
+        $key = 'test_ip_iso_' . bin2hex(random_bytes(32));
         $limit = 1;
         $ttl = 2;
         $maxAttempts = 2;
@@ -382,7 +382,7 @@ class RateLimitMemcachedTest extends AbstractTestCase
     public function testClearBanActuallyUnbansClientMemcached(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
-        $key = 'test_clearban_' . microtime(true);
+        $key = 'test_clearban_' . bin2hex(random_bytes(32));
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -453,7 +453,7 @@ class RateLimitMemcachedTest extends AbstractTestCase
     public function testMemcachedTtlAboveThirtyDaysIsNormalized(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
-        $key = 'test_ttl30d_' . microtime(true);
+        $key = 'test_ttl30d_' . bin2hex(random_bytes(32));
         $overThirtyDays = 2_592_001; // 30 days + 1 second
 
         $limiter->isLimited($key, 5, $overThirtyDays);

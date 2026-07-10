@@ -55,7 +55,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testRateLimitWithBanRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test' . microtime(true);
+        $key = 'test' . bin2hex(random_bytes(32));
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -87,7 +87,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testRateLimitWithBanRedisTwo(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test' . microtime(true);
+        $key = 'test' . bin2hex(random_bytes(32));
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -121,7 +121,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testRateLimitWithBanAPCu(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = 'test' . microtime(true);
+        $key = 'test' . bin2hex(random_bytes(32));
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -169,7 +169,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testBanTimeFrameExpirationResetsViolationsRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test_btf_redis_' . microtime(true);
+        $key = 'test_btf_redis_' . bin2hex(random_bytes(32));
         $limit = 1;
         $ttl = 2;
         $maxAttempts = 2;
@@ -204,7 +204,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testBanTimeFrameExpirationResetsViolationsAPCu(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = 'test_btf_apcu_' . microtime(true);
+        $key = 'test_btf_apcu_' . bin2hex(random_bytes(32));
         $limit = 1;
         $ttl = 2;
         $maxAttempts = 2;
@@ -240,7 +240,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testClientIpIsolationRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test_ip_iso_redis_' . microtime(true);
+        $key = 'test_ip_iso_redis_' . bin2hex(random_bytes(32));
         $limit = 1;
         $ttl = 60;       // long enough to avoid expiry during the test
         $maxAttempts = 2;
@@ -285,7 +285,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testClientIpIsolationAPCu(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = 'test_ip_iso_apcu_' . microtime(true);
+        $key = 'test_ip_iso_apcu_' . bin2hex(random_bytes(32));
         $limit = 1;
         $ttl = 60;
         $maxAttempts = 2;
@@ -350,7 +350,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testClearBanActuallyUnbansClientRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test_clearban_redis_' . microtime(true);
+        $key = 'test_clearban_redis_' . bin2hex(random_bytes(32));
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -383,7 +383,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testClearBanActuallyUnbansClientAPCu(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = 'test_clearban_apcu_' . microtime(true);
+        $key = 'test_clearban_apcu_' . bin2hex(random_bytes(32));
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -424,7 +424,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testViolationCounterSelfHealsMissingTtlRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test_selfheal_' . microtime(true);
+        $key = 'test_selfheal_' . bin2hex(random_bytes(32));
         $violationCountKey = 'BAN_violation_count_' . $key;
 
         // Simulate a crash that incremented the violation counter but never

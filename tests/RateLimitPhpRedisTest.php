@@ -230,7 +230,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
     public function testMainCounterSelfHealsMissingTtlPhpRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test_selfheal_main_' . microtime(true);
+        $key = 'test_selfheal_main_' . bin2hex(random_bytes(32));
 
         // Simulate a crash that incremented the counter but never reached
         // the expireAndGet() call: the key exists with no TTL at all.

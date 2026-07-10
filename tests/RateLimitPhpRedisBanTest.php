@@ -65,7 +65,7 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     public function testRateLimitWithBanPhpRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test' . microtime(true);
+        $key = 'test' . bin2hex(random_bytes(32));
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -105,7 +105,7 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     public function testRateLimitWithBanPhpRedisDetailed(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test' . microtime(true);
+        $key = 'test' . bin2hex(random_bytes(32));
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -161,7 +161,7 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     public function testBanTimeFrameExpirationResetsViolationsPhpRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test_btf_' . microtime(true);
+        $key = 'test_btf_' . bin2hex(random_bytes(32));
         $limit = 1;
         $ttl = 2;
         $maxAttempts = 2;
@@ -202,7 +202,7 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     public function testClientIpIsolationPhpRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test_ip_iso_' . microtime(true);
+        $key = 'test_ip_iso_' . bin2hex(random_bytes(32));
         $limit = 1;
         $ttl = 60;       // long enough to avoid expiry during the test
         $maxAttempts = 2;
@@ -262,7 +262,7 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     public function testClearBanActuallyUnbansClientPhpRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test_clearban_phpredis_' . microtime(true);
+        $key = 'test_clearban_phpredis_' . bin2hex(random_bytes(32));
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -302,7 +302,7 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     public function testPhpRedisFailsClosedOnWrongTypeViolationCounter(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test_wrongtype_ban_' . microtime(true);
+        $key = 'test_wrongtype_ban_' . bin2hex(random_bytes(32));
         $violationCountKey = 'BAN_violation_count_' . $key;
 
         // A list value makes GET fail with WRONGTYPE instead of a numeric result.
