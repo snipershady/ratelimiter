@@ -336,4 +336,112 @@ class RateLimitBanTest extends AbstractTestCase
         $result = $limiter->clearRateLimitedKey('non_existent_key_' . microtime(true));
         $this->assertFalse($result);
     }
+
+    // -------------------------------------------------------------------------
+    // clearBan() actually lifts an active ban
+    // -------------------------------------------------------------------------
+
+    /**
+     * Regression test: clearRateLimitedKey() alone only deletes the main request
+     * counter, never the violation counter, so a banned client would be re-banned
+     * on its very next request. clearBan() must clear both, so the client is
+     * genuinely unbanned: the next window uses normal $ttl, not $banTtl.
+     */
+    public function testClearBanActuallyUnbansClientRedis(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
+        $key = 'test_clearban_redis_' . microtime(true);
+        $limit = 1;
+        $maxAttempts = 3;
+        $ttl = 2;
+        $banTimeFrame = 30;
+        $banTtl = 60;
+        $clientIp = '203.0.113.9';
+
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp); // violation_count = 1
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp); // violation_count = 2
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp); // violation_count = 3 = maxAttempts
+
+        sleep($ttl + 1); // let the normal window expire
+
+        // Ban window opens: fresh key created with banTtl.
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertSame($banTtl, $this->redis->ttl($key)); // confirms the client is genuinely banned
+
+        $this->assertTrue($limiter->clearBan($key, $clientIp));
+
+        // Genuinely unbanned: fresh window uses normal $ttl, not $banTtl.
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result);
+        $this->assertSame($ttl, $this->redis->ttl($key));
+    }
+
+    /**
+     * Same clearBan() regression as testClearBanActuallyUnbansClientRedis, for APCu.
+     */
+    public function testClearBanActuallyUnbansClientAPCu(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+        $key = 'test_clearban_apcu_' . microtime(true);
+        $limit = 1;
+        $maxAttempts = 3;
+        $ttl = 2;
+        $banTimeFrame = 30;
+        $banTtl = 60;
+        $clientIp = '203.0.113.9';
+
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+
+        sleep($ttl + 1);
+
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertSame($banTtl, apcu_key_info($key)['ttl']);
+
+        $this->assertTrue($limiter->clearBan($key, $clientIp));
+
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result);
+        $this->assertSame($ttl, apcu_key_info($key)['ttl']);
+    }
+
+    // -------------------------------------------------------------------------
+    // Violation counter TTL self-healing
+    // -------------------------------------------------------------------------
+
+    /**
+     * Regression test for RateLimiterServiceRedis::recordViolation(): before the
+     * fix, the violation counter's increment and expire were two separate,
+     * unbatched Redis calls. A crash between them left the counter live forever
+     * with no TTL, permanently stuck above maxAttempts. recordViolation() now
+     * calls expire() with EXPIRE ... NX, which only binds a TTL if the key
+     * doesn't already have one — so any later violation "heals" a counter a
+     * prior crash left without a TTL, instead of leaving it dangling.
+     */
+    public function testViolationCounterSelfHealsMissingTtlRedis(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
+        $key = 'test_selfheal_' . microtime(true);
+        $violationCountKey = 'BAN_violation_count_' . $key;
+
+        // Simulate a crash that incremented the violation counter but never
+        // reached the expire() call: the key exists with no TTL at all.
+        $this->redis->incr($violationCountKey);
+        $this->assertSame(-1, $this->redis->ttl($violationCountKey)); // -1 = key exists, no TTL
+
+        $limit = 1;
+        $maxAttempts = 5; // high enough that these violations alone won't trigger a ban
+        $ttl = 60;
+        $banTimeFrame = 30;
+        $banTtl = 120;
+
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, null); // not limited
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, null); // limited -> records a violation
+
+        // The counter must now be self-healed with a real TTL instead of living forever.
+        $this->assertGreaterThan(0, $this->redis->ttl($violationCountKey));
+    }
 }

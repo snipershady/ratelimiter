@@ -250,4 +250,40 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
         $result = $limiter->clearRateLimitedKey('non_existent_key_' . microtime(true));
         $this->assertFalse($result);
     }
+
+    // -------------------------------------------------------------------------
+    // clearBan() actually lifts an active ban
+    // -------------------------------------------------------------------------
+
+    /**
+     * Same clearBan() regression as RateLimitBanTest::testClearBanActuallyUnbansClientRedis,
+     * for the native \Redis extension backend.
+     */
+    public function testClearBanActuallyUnbansClientPhpRedis(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
+        $key = 'test_clearban_phpredis_' . microtime(true);
+        $limit = 1;
+        $maxAttempts = 3;
+        $ttl = 2;
+        $banTimeFrame = 30;
+        $banTtl = 60;
+        $clientIp = '203.0.113.9';
+
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+
+        sleep($ttl + 1);
+
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertSame($banTtl, $this->redis->ttl($key));
+
+        $this->assertTrue($limiter->clearBan($key, $clientIp));
+
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result);
+        $this->assertSame($ttl, $this->redis->ttl($key));
+    }
 }

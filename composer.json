@@ -28,11 +28,16 @@
         "php": "^8.3",
         "predis/predis": "^3.2"
     },
+    "suggest": {
+        "ext-apcu": "Required to use the APCU backend (CacheEnum::APCU)",
+        "ext-redis": "Required to use the native Redis extension backend (CacheEnum::PHP_REDIS)",
+        "ext-memcached": "Required to use the Memcached backend (CacheEnum::MEMCACHED)"
+    },
     "require-dev": {
-        "friendsofphp/php-cs-fixer": "^3.90",
+        "friendsofphp/php-cs-fixer": "^3.95",
         "phpunit/phpunit": "^13.2",
         "phpstan/phpstan": "^2.2",
-        "rector/rector": "^2.4.5"
+        "rector/rector": "^2.5.5"
     },
     "scripts": {
         "test": "vendor/bin/phpunit",

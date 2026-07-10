@@ -367,4 +367,99 @@ class RateLimitMemcachedTest extends AbstractTestCase
         $result = $limiter->clearRateLimitedKey('non_existent_key_' . microtime(true));
         $this->assertFalse($result);
     }
+
+    // -------------------------------------------------------------------------
+    // clearBan() actually lifts an active ban
+    // -------------------------------------------------------------------------
+
+    /**
+     * Same clearBan() regression as the Redis/APCu equivalents: clearRateLimitedKey()
+     * alone leaves the violation counter elevated, so the client would be re-banned
+     * on its next request. Verified behaviourally, as with the other Memcached ban
+     * tests: after clearBan(), a normal-$ttl window must actually expire on schedule
+     * instead of surviving like a banTtl-backed window would.
+     */
+    public function testClearBanActuallyUnbansClientMemcached(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
+        $key = 'test_clearban_' . microtime(true);
+        $limit = 1;
+        $maxAttempts = 3;
+        $ttl = 2;
+        $banTimeFrame = 30;
+        $banTtl = 10; // intentionally > ttl to make the behavioral distinction measurable
+        $clientIp = '203.0.113.9';
+
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+
+        sleep($ttl + 1); // let the normal window expire
+
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result); // ban window opens: first request free
+
+        $this->assertTrue($limiter->clearBan($key, $clientIp));
+
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result); // fresh window after clearBan
+
+        sleep($ttl + 1); // would survive if banTtl=10 had been (wrongly) reapplied
+
+        $result = $limiter->isLimitedWithBan($key, $limit, $ttl, $maxAttempts, $banTimeFrame, $banTtl, $clientIp);
+        $this->assertFalse($result); // key expired with normal $ttl, proving the client was genuinely unbanned
+    }
+
+    // -------------------------------------------------------------------------
+    // Backend failure handling
+    // -------------------------------------------------------------------------
+
+    /**
+     * Regression test for RateLimiterServiceMemcached::atomicIncrement(): before
+     * the fix, a genuine Memcached backend error (as opposed to a simple cache
+     * miss) was indistinguishable from "key doesn't exist yet" and silently
+     * treated as the first-ever request, letting traffic through unlimited
+     * (fail-open). A rate limiter is a security control, so a real backend
+     * error must now fail closed by throwing instead.
+     */
+    public function testMemcachedFailsClosedOnBackendError(): void
+    {
+        $memcached = new \Memcached('rl_test_unreachable_' . microtime(true));
+        // Tight timeouts so the test fails fast instead of hanging.
+        $memcached->setOption(\Memcached::OPT_CONNECT_TIMEOUT, 200);
+        $memcached->setOption(\Memcached::OPT_SEND_TIMEOUT, 200000);
+        $memcached->setOption(\Memcached::OPT_RECV_TIMEOUT, 200000);
+        $memcached->setOption(\Memcached::OPT_POLL_TIMEOUT, 200);
+        $memcached->addServer('127.0.0.1', 19999); // nothing listens here
+
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $memcached);
+
+        $this->expectException(\RuntimeException::class);
+        $limiter->isLimited('unreachable_key_' . microtime(true), 5, 60);
+    }
+
+    // -------------------------------------------------------------------------
+    // TTL beyond Memcached's 30-day relative/absolute threshold
+    // -------------------------------------------------------------------------
+
+    /**
+     * Regression test for RateLimiterServiceMemcached::normalizeTtl(): Memcached's
+     * protocol treats an exptime greater than 30 days (2,592,000s) as an absolute
+     * Unix timestamp rather than a relative offset. Before the fix, a TTL just
+     * over that threshold was silently reinterpreted as a moment already in the
+     * past (1970-01-30 UTC), so the key was effectively never actually stored.
+     */
+    public function testMemcachedTtlAboveThirtyDaysIsNormalized(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
+        $key = 'test_ttl30d_' . microtime(true);
+        $overThirtyDays = 2_592_001; // 30 days + 1 second
+
+        $limiter->isLimited($key, 5, $overThirtyDays);
+
+        // The key must actually persist with a real future expiry instead of
+        // being dropped/never stored.
+        $this->assertSame(1, (int) $this->memcached->get($key));
+    }
 }

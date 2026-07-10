@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace RateLimiter\Service;
 
 use Predis\Client;
@@ -33,6 +35,22 @@ use RateLimiter\Enum\CacheEnum;
 abstract class AbstractRateLimiterService implements RateLimiterInterface
 {
     /**
+     * Bounds $key so that the composed internal ban-tracking key
+     * ("BAN_violation_count_" + key + "_" + clientIp, see buildViolationCountKey())
+     * stays safely under Memcached's hard 250-byte key limit, and guards every
+     * backend against unbounded key-space growth from a caller-controlled $key.
+     */
+    private const int MAX_KEY_LENGTH = 128;
+
+    /**
+     * Generous enough for any IPv6 literal (45 bytes covers the longest form,
+     * including an IPv4-mapped suffix), while still rejecting a caller who
+     * mistakenly passes an unbounded string (e.g. a raw X-Forwarded-For
+     * header) as $clientIp.
+     */
+    private const int MAX_CLIENT_IP_LENGTH = 45;
+
+    /**
      * @param string $key   <p>Name of the function you want to limit. You can use __FUNCTION__ or __METHOD__ inside a subroutine to avoid collision</p>
      * @param int    $limit <p>Limit</p>
      * @param int    $ttl   <p>Timeframe</p>
@@ -45,6 +63,15 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
      *
      * </p>
      *
+     * Shared template for all backends: validates input, applies $banTtl once
+     * the violation count reaches $maxAttempts, delegates the actual limiting
+     * to isLimited(), and records a violation when the request is limited.
+     * Backends only implement how to read and atomically bump the violation
+     * counter (getViolationCount() / recordViolation()) — this keeps the
+     * ban/violation algorithm itself in one place instead of hand-duplicated
+     * per backend, where a fix applied to one (like the atomic-TTL handling
+     * in recordViolation()) could otherwise be missed in the others.
+     *
      * @param string      $key          <p>Name of the function you want to limit. You can use __FUNCTION__ or __METHOD__ inside a subroutine to avoid collision</p>
      * @param int         $limit        <p>Limit</p>
      * @param int         $ttl          <p>Timeframe</p>
@@ -54,7 +81,43 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
      * @param string|null $clientIp     <p>Useful to ban a specific client from a function</p>
      */
     #[\Override]
-    abstract public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool;
+    public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool
+    {
+        $this->checkKey($key);
+        $this->checkClientIp($clientIp);
+        $this->checkMaxAttempts($maxAttempts);
+        $this->checkTTL($banTtl);
+        $this->checkTTL($ttl);
+        $this->checkTimeFrame($banTimeFrame);
+
+        $violationCountKey = $this->buildViolationCountKey($key, $clientIp);
+
+        if ($this->getViolationCount($violationCountKey) >= $maxAttempts) {
+            $ttl = $banTtl;
+        }
+
+        $actual = $this->isLimited($key, $limit, $ttl);
+
+        if ($actual) {
+            $this->recordViolation($violationCountKey, $banTimeFrame);
+        }
+
+        return $actual;
+    }
+
+    /**
+     * <p>Returns the current value of the ban violation counter at $violationCountKey,
+     * or 0 if it doesn't exist yet.</p>.
+     */
+    abstract protected function getViolationCount(string $violationCountKey): int;
+
+    /**
+     * <p>Atomically increments the ban violation counter at $violationCountKey.
+     * Implementations must bind it to a $banTimeFrame-second window on the
+     * first violation only — the window is fixed from the first offence and
+     * must never be renewed by later ones.</p>.
+     */
+    abstract protected function recordViolation(string $violationCountKey, int $banTimeFrame): void;
 
     /**
      * <p>Delete the limited key</p>.
@@ -63,6 +126,29 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
      */
     #[\Override]
     abstract public function clearRateLimitedKey(string $key): bool;
+
+    /**
+     * <p>Clear an active ban: deletes both the request counter and the ban
+     * violation counter for $key, so the next request is treated as the
+     * first in a fresh window instead of immediately re-triggering the ban.</p>.
+     *
+     * @param string      $key      <p>key to unban</p>
+     * @param string|null $clientIp <p>must match the value passed to isLimitedWithBan(), if any</p>
+     */
+    #[\Override]
+    abstract public function clearBan(string $key, ?string $clientIp = null): bool;
+
+    /**
+     * <p>Builds the internal cache key used to track ban violations for $key,
+     * optionally scoped to $clientIp so each IP gets its own counter. Mirrors
+     * the key naming used by isLimitedWithBan() in each backend.</p>.
+     */
+    protected function buildViolationCountKey(string $key, ?string $clientIp): string
+    {
+        return null !== $clientIp
+            ? 'BAN_violation_count_' . $key . '_' . $clientIp
+            : 'BAN_violation_count_' . $key;
+    }
 
     /**
      * <p>Verify if <b>ttl</b> parameter is positive integer. Throws InvalidArgumentException</p>.
@@ -89,14 +175,46 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
     }
 
     /**
-     * <p>Verify if <b>key</b> parameter is not empty. Throws InvalidArgumentException</p>.
+     * <p>Verify if <b>$maxAttempts</b> parameter is positive integer. Throws InvalidArgumentException</p>.
+     *
+     * A non-positive value would make the "violation count >= maxAttempts" check
+     * true from the very first request, applying $banTtl unconditionally instead
+     * of after genuine repeated offences.
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected function checkMaxAttempts(int $maxAttempts): void
+    {
+        if (!$this->isPositiveInteger($maxAttempts)) {
+            throw new \InvalidArgumentException(sprintf('MaxAttempts must be a positive integer, %d given', $maxAttempts));
+        }
+    }
+
+    /**
+     * <p>Verify if <b>key</b> parameter is not empty and not unreasonably long. Throws InvalidArgumentException</p>.
      *
      * @throws \InvalidArgumentException
      */
     protected function checkKey(string $key): void
     {
-        if (empty($key)) {
+        if ('' === $key) {
             throw new \InvalidArgumentException(sprintf('Key cannot be empty, %s given, instead', $key));
+        }
+
+        if (strlen($key) > self::MAX_KEY_LENGTH) {
+            throw new \InvalidArgumentException(sprintf('Key must be at most %d bytes, %d given', self::MAX_KEY_LENGTH, strlen($key)));
+        }
+    }
+
+    /**
+     * <p>Verify that <b>$clientIp</b>, when provided, is not unreasonably long. Throws InvalidArgumentException</p>.
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected function checkClientIp(?string $clientIp): void
+    {
+        if (null !== $clientIp && strlen($clientIp) > self::MAX_CLIENT_IP_LENGTH) {
+            throw new \InvalidArgumentException(sprintf('Client IP must be at most %d bytes, %d given', self::MAX_CLIENT_IP_LENGTH, strlen($clientIp)));
         }
     }
 

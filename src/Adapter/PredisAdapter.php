@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace RateLimiter\Adapter;
 
 use Predis\Client;
@@ -66,7 +68,7 @@ class PredisAdapter implements RedisAdapterInterface
     #[\Override]
     public function expire(string $key, int $ttl): void
     {
-        $this->client->expire($key, $ttl);
+        $this->client->expire($key, $ttl, 'NX');
     }
 
     #[\Override]

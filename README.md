@@ -130,15 +130,53 @@ $banTtl       Punishment window: replaces $ttl when the client has exceeded
  t=132s Request N: allowed  (violation_count=0, normal $ttl=5s applies again)
 ```
 
+> **Note:** a ban is only applied when the request key's window is next (re)created — it is
+> not retroactive mid-window. In the timeline above, the ban threshold is reached at `t=7s`
+> but the extended `$banTtl` window only starts at `t=12s`, once the normal `$ttl` window
+> naturally expires. With a long `$ttl`, a client that just tripped the threshold can keep
+> operating under the old, non-banned window for up to the remainder of that period.
+
 ### `clearRateLimitedKey(string $key): bool`
 
-Remove a rate limit key, resetting its counter.
+Remove a rate limit key, resetting its counter. Note: when the key was managed with
+`isLimitedWithBan`, this does **not** lift an active ban — the ban violation counter
+lives under a separate internal key. Use `clearBan` to actually unban a client.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `$key` | string | The key to clear |
 
 **Returns:** `true` on success, `false` on failure.
+
+### `clearBan(string $key, ?string $clientIp = null): bool`
+
+Clears both the request counter and the ban violation counter for `$key`, immediately
+lifting an active ban. `$clientIp` must match the value passed to `isLimitedWithBan`
+(or be omitted/`null` if a shared global counter was used), so the correct per-IP
+violation counter is targeted.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$key` | string | The key to unban |
+| `$clientIp` | string\|null | Must match the `$clientIp` used with `isLimitedWithBan`, if any |
+
+**Returns:** `true` if either counter was actually cleared, `false` if there was nothing to clear.
+
+### Input Validation
+
+Every method validates its arguments and throws `\InvalidArgumentException` on the first
+violation, before touching the cache backend:
+
+| Parameter | Rule |
+|-----------|------|
+| `$key` | Non-empty, at most 128 bytes |
+| `$clientIp` | When not `null`, at most 45 bytes (covers any IPv6 literal) |
+| `$ttl`, `$banTtl`, `$banTimeFrame` | Positive integer (`> 0`) |
+| `$maxAttempts` | Positive integer (`> 0`) — a non-positive value would otherwise apply `$banTtl` unconditionally from the very first request |
+
+The `$key`/`$clientIp` length caps exist because the internal ban-tracking key is built as
+`BAN_violation_count_<key>_<clientIp>`, which must stay safely under Memcached's hard
+250-byte key limit regardless of backend.
 
 ## Usage Examples
 
@@ -238,6 +276,19 @@ if ($limiter->isLimited($key, $limit, $ttl)) {
     throw new \Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
 }
 ```
+
+**Two Memcached-specific behaviours worth knowing:**
+
+- **Long TTLs just work.** Memcached's protocol treats an `exptime` greater than 30 days
+  (2,592,000 seconds) as an absolute Unix timestamp rather than a relative offset. This
+  backend automatically converts any `$ttl`/`$banTtl` above that threshold into an absolute
+  timestamp internally, so you can pass any plain "seconds from now" value — including a
+  multi-month `$banTtl` — without running into that quirk yourself.
+- **Backend errors fail closed.** If a genuine Memcached error occurs (server unreachable,
+  timeout, etc. — as opposed to a normal cache miss), the library throws `\RuntimeException`
+  instead of silently treating the request as unlimited. A rate limiter is a security
+  control, so an infrastructure failure should block, not bypass, the check; catch
+  `\RuntimeException` if you need custom fallback behaviour during an outage.
 
 ---
 
@@ -388,7 +439,7 @@ of origin).
 ### Clearing a Rate Limit Key
 
 `clearRateLimitedKey` resets the counter for a given key immediately. Useful after a
-successful authentication, a manual unban, or during testing.
+successful authentication or during testing.
 
 ```php
 // Works identically for every backend — swap the factory call as needed.
@@ -401,9 +452,29 @@ if ($limiter->clearRateLimitedKey($key)) {
 }
 ```
 
-When using `isLimitedWithBan`, only the request counter is cleared by this method. The
-violation counter (used to track bans) lives under a separate internal key and is managed
-automatically by the library.
+When using `isLimitedWithBan`, this method alone does **not** lift an active ban: the
+ban violation counter lives under a separate internal key and drives the ban independently
+of the request counter. Use `clearBan` instead to actually unban a client.
+
+### Manually Lifting a Ban
+
+`clearBan` clears both the request counter and the violation counter for a key, so the
+very next request is treated as the first in a fresh window instead of immediately
+re-triggering the ban.
+
+```php
+$limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+
+$key = 'App\Controller\LoginController::login';
+$clientIp = $_SERVER['REMOTE_ADDR'];
+
+if ($limiter->clearBan($key, $clientIp)) {
+    // Client is unbanned immediately.
+}
+```
+
+Pass the same `$clientIp` (or omit it) that was used with `isLimitedWithBan`, so the
+correct violation counter — per-IP or shared — is cleared.
 
 ---
 
@@ -413,10 +484,10 @@ automatically by the library.
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| phpunit/phpunit | ^12.1 | test runner |
-| phpstan/phpstan | ^2.1 | static analysis |
+| phpunit/phpunit | ^13.2 | test runner |
+| phpstan/phpstan | ^2.2 | static analysis |
 | friendsofphp/php-cs-fixer | ^3.90 | code style |
-| rector/rector | ^2.1 | automated refactoring |
+| rector/rector | ^2.4.5 | automated refactoring |
 
 ### Available Scripts
 

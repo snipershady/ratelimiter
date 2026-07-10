@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace RateLimiter\Service;
 
 /*
@@ -30,6 +32,14 @@ namespace RateLimiter\Service;
  */
 class RateLimiterServiceMemcached extends AbstractRateLimiterService
 {
+    /**
+     * Memcached's protocol treats an exptime greater than 30 days (2,592,000
+     * seconds) as an absolute Unix timestamp rather than a relative offset.
+     *
+     * @see https://github.com/memcached/memcached/wiki/Programming#expiration
+     */
+    private const int MAX_RELATIVE_TTL = 2_592_000;
+
     public function __construct(private readonly \Memcached $client)
     {
     }
@@ -44,29 +54,17 @@ class RateLimiterServiceMemcached extends AbstractRateLimiterService
     }
 
     #[\Override]
-    public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool
+    protected function getViolationCount(string $violationCountKey): int
     {
-        $this->checkTTL($banTtl);
-        $this->checkTTL($ttl);
-        $this->checkTimeFrame($banTimeFrame);
+        return (int) $this->client->get($violationCountKey);
+    }
 
-        $violationCountKey = null !== $clientIp
-            ? 'BAN_violation_count_' . $key . '_' . $clientIp
-            : 'BAN_violation_count_' . $key;
-
-        if ((int) $this->client->get($violationCountKey) >= $maxAttempts) {
-            $ttl = $banTtl;
-        }
-
-        $actual = $this->isLimited($key, $limit, $ttl);
-
-        if ($actual) {
-            // TTL = $banTimeFrame: the violation counter expires $banTimeFrame seconds after
-            // the FIRST violation. atomicIncrement() only sets TTL at key creation (fixed window).
-            $this->atomicIncrement($violationCountKey, $banTimeFrame);
-        }
-
-        return $actual;
+    #[\Override]
+    protected function recordViolation(string $violationCountKey, int $banTimeFrame): void
+    {
+        // TTL = $banTimeFrame: the violation counter expires $banTimeFrame seconds after
+        // the FIRST violation. atomicIncrement() only sets TTL at key creation (fixed window).
+        $this->atomicIncrement($violationCountKey, $banTimeFrame);
     }
 
     #[\Override]
@@ -75,6 +73,20 @@ class RateLimiterServiceMemcached extends AbstractRateLimiterService
         $this->checkKey($key);
 
         return $this->client->delete($key);
+    }
+
+    #[\Override]
+    public function clearBan(string $key, ?string $clientIp = null): bool
+    {
+        $this->checkKey($key);
+        $this->checkClientIp($clientIp);
+
+        $violationCountKey = $this->buildViolationCountKey($key, $clientIp);
+
+        $mainCleared = $this->client->delete($key);
+        $violationCleared = $this->client->delete($violationCountKey);
+
+        return $mainCleared || $violationCleared;
     }
 
     /**
@@ -87,6 +99,11 @@ class RateLimiterServiceMemcached extends AbstractRateLimiterService
      *   3. If add() loses the race (another process created the key first), retry increment().
      *
      * increment() never resets the key TTL, so the expiry window is fixed from creation.
+     *
+     * Each step distinguishes an expected outcome (key missing, or lost the add() race)
+     * from a genuine backend failure via getResultCode(). A rate limiter is a security
+     * control: on a real Memcached error we must fail closed (throw) rather than fall
+     * back to treating the request as "first ever" and letting it through unlimited.
      */
     private function atomicIncrement(string $key, int $ttl): int
     {
@@ -96,14 +113,49 @@ class RateLimiterServiceMemcached extends AbstractRateLimiterService
             return (int) $count;
         }
 
+        if (\Memcached::RES_NOTFOUND !== $this->client->getResultCode()) {
+            throw $this->memcachedFailure('increment', $key);
+        }
+
         // Key does not exist: create it atomically with value 1.
-        if ($this->client->add($key, 1, $ttl)) {
+        if ($this->client->add($key, 1, $this->normalizeTtl($ttl))) {
             return 1;
+        }
+
+        if (\Memcached::RES_NOTSTORED !== $this->client->getResultCode()) {
+            throw $this->memcachedFailure('add', $key);
         }
 
         // Another process created the key between our increment() miss and add(); retry.
         $count = $this->client->increment($key);
 
-        return false !== $count ? (int) $count : 1;
+        if (false === $count) {
+            throw $this->memcachedFailure('increment', $key);
+        }
+
+        return (int) $count;
+    }
+
+    /**
+     * Converts a relative TTL above Memcached's 30-day threshold into an
+     * absolute Unix timestamp, so callers can keep passing a plain "seconds
+     * from now" value (as required by isLimited()/isLimitedWithBan()'s
+     * contract) regardless of magnitude, instead of it being silently
+     * reinterpreted by Memcached as a moment already in the past.
+     */
+    private function normalizeTtl(int $ttl): int
+    {
+        return $ttl > self::MAX_RELATIVE_TTL ? time() + $ttl : $ttl;
+    }
+
+    private function memcachedFailure(string $operation, string $key): \RuntimeException
+    {
+        return new \RuntimeException(sprintf(
+            'Memcached %s() failed for key "%s": %s (code %d)',
+            $operation,
+            $key,
+            $this->client->getResultMessage(),
+            $this->client->getResultCode(),
+        ));
     }
 }

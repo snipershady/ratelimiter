@@ -53,6 +53,22 @@ class RateLimiterValidationTest extends AbstractTestCase
         $this->limiter->isLimited('', 5, 60);
     }
 
+    /**
+     * empty('0') === true in PHP, so a naive `empty($key)` check would wrongly
+     * reject the legitimate numeric-string key "0" (e.g. a userId cast to string).
+     */
+    public function testIsLimitedKeyOfLiteralZeroIsAccepted(): void
+    {
+        $result = $this->limiter->isLimited('0', 5, 60);
+        $this->assertFalse($result);
+    }
+
+    public function testIsLimitedOverlongKeyThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->limiter->isLimited(str_repeat('a', 129), 5, 60);
+    }
+
     public function testIsLimitedZeroTtlThrowsException(): void
     {
         $this->expectException(\InvalidArgumentException::class);
@@ -112,14 +128,36 @@ class RateLimiterValidationTest extends AbstractTestCase
     }
 
     /**
-     * Empty key is validated inside isLimited(), which is called by isLimitedWithBan().
-     * The cache may be touched before the exception is thrown (violation count fetch),
-     * but the exception is still raised correctly.
+     * $key is validated first, before any cache access, by the shared
+     * isLimitedWithBan() template in AbstractRateLimiterService.
      */
     public function testIsLimitedWithBanEmptyKeyThrowsException(): void
     {
         $this->expectException(\InvalidArgumentException::class);
         $this->limiter->isLimitedWithBan('', 5, 60, 3, 300, 3600, null);
+    }
+
+    public function testIsLimitedWithBanOverlongClientIpThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        // 46 bytes: one over the 45-byte cap (the longest possible IPv6 literal).
+        $this->limiter->isLimitedWithBan('key', 5, 60, 3, 300, 3600, str_repeat('1', 46));
+    }
+
+    /**
+     * maxAttempts <= 0 would otherwise make "violation count >= maxAttempts"
+     * true from the very first request, applying $banTtl unconditionally.
+     */
+    public function testIsLimitedWithBanZeroMaxAttemptsThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->limiter->isLimitedWithBan('key', 5, 60, 0, 300, 3600, null);
+    }
+
+    public function testIsLimitedWithBanNegativeMaxAttemptsThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->limiter->isLimitedWithBan('key', 5, 60, -3, 300, 3600, null);
     }
 
     // -------------------------------------------------------------------------
@@ -138,6 +176,31 @@ class RateLimiterValidationTest extends AbstractTestCase
     public function testClearNonExistentKeyReturnsFalse(): void
     {
         $result = $this->limiter->clearRateLimitedKey('non_existent_key_' . microtime(true));
+        $this->assertFalse($result);
+    }
+
+    // -------------------------------------------------------------------------
+    // clearBan() — invalid inputs and edge cases
+    // -------------------------------------------------------------------------
+
+    public function testClearBanEmptyKeyThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->limiter->clearBan('');
+    }
+
+    public function testClearBanOverlongClientIpThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->limiter->clearBan('key', str_repeat('1', 46));
+    }
+
+    /**
+     * Clearing a ban that doesn't exist must return false gracefully, not throw.
+     */
+    public function testClearBanNonExistentKeyReturnsFalse(): void
+    {
+        $result = $this->limiter->clearBan('non_existent_key_' . microtime(true));
         $this->assertFalse($result);
     }
 }

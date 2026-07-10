@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace RateLimiter\Adapter;
 
 /*
@@ -51,8 +53,12 @@ interface RedisAdapterInterface
     public function get(string $key): int;
 
     /**
-     * Set the TTL on $key without reading its value.
-     * Used to assign the observation window to the violation counter.
+     * Set the TTL on $key only if it does not already have one (Redis EXPIRE ... NX),
+     * without reading its value. Used to bind the observation window to the violation
+     * counter. Safe to call unconditionally on every increment: NX makes it a no-op
+     * once the window is bound, and self-healing if a prior crash left the key
+     * incremented but without a TTL (which a plain "increment, then conditionally
+     * expire" step cannot guarantee).
      */
     public function expire(string $key, int $ttl): void;
 

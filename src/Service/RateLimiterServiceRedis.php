@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace RateLimiter\Service;
 
 use RateLimiter\Adapter\RedisAdapterInterface;
@@ -59,40 +61,29 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
         return $count > $limit;
     }
 
+    #[\Override]
+    protected function getViolationCount(string $violationCountKey): int
+    {
+        return $this->adapter->get($violationCountKey);
+    }
+
     /**
-     * {@inheritDoc}
-     *
      * The violation counter uses a fixed observation window ($banTimeFrame).
      * Its TTL is set only on the first violation and never renewed, so the
      * window starts at the first offence and expires $banTimeFrame seconds
      * later regardless of subsequent activity.
      */
     #[\Override]
-    public function isLimitedWithBan(string $key, int $limit, int $ttl, int $maxAttempts, int $banTimeFrame, int $banTtl, ?string $clientIp): bool
+    protected function recordViolation(string $violationCountKey, int $banTimeFrame): void
     {
-        $this->checkTTL($banTtl);
-        $this->checkTTL($ttl);
-        $this->checkTimeFrame($banTimeFrame);
+        $this->adapter->increment($violationCountKey);
 
-        $violationCountKey = null !== $clientIp
-            ? 'BAN_violation_count_' . $key . '_' . $clientIp
-            : 'BAN_violation_count_' . $key;
-
-        if ($this->adapter->get($violationCountKey) >= $maxAttempts) {
-            $ttl = $banTtl;
-        }
-
-        $actual = $this->isLimited($key, $limit, $ttl);
-
-        if ($actual) {
-            $violationCount = $this->adapter->increment($violationCountKey);
-
-            if ($violationCount <= 1) {
-                $this->adapter->expire($violationCountKey, $banTimeFrame);
-            }
-        }
-
-        return $actual;
+        // expire() uses EXPIRE ... NX, so this is safe to call on every
+        // violation: it binds the window on the first one and is a no-op
+        // afterwards, without depending on a non-atomic "increment, then
+        // conditionally expire" step that could leave the counter
+        // permanently without a TTL if a crash landed between the two.
+        $this->adapter->expire($violationCountKey, $banTimeFrame);
     }
 
     #[\Override]
@@ -101,5 +92,19 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
         $this->checkKey($key);
 
         return (bool) $this->adapter->del($key);
+    }
+
+    #[\Override]
+    public function clearBan(string $key, ?string $clientIp = null): bool
+    {
+        $this->checkKey($key);
+        $this->checkClientIp($clientIp);
+
+        $violationCountKey = $this->buildViolationCountKey($key, $clientIp);
+
+        $mainCleared = $this->adapter->del($key) > 0;
+        $violationCleared = $this->adapter->del($violationCountKey) > 0;
+
+        return $mainCleared || $violationCleared;
     }
 }
