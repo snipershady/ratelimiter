@@ -338,6 +338,30 @@ class RateLimitBanTest extends AbstractTestCase
     }
 
     // -------------------------------------------------------------------------
+    // clearBan() edge case: nothing to clear
+    // -------------------------------------------------------------------------
+
+    /**
+     * clearBan()'s "mainCleared || violationCleared" logic is implemented
+     * separately per backend, so a key never limited/banned must return false
+     * on every backend, not just APCu (see testClearBanNonExistentKeyReturnsFalse
+     * in RateLimiterValidationTest).
+     */
+    public function testClearBanNonExistentKeyReturnsFalseRedis(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
+        $result = $limiter->clearBan('non_existent_key_' . microtime(true));
+        $this->assertFalse($result);
+    }
+
+    public function testClearBanNonExistentKeyReturnsFalseAPCu(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+        $result = $limiter->clearBan('non_existent_key_' . microtime(true));
+        $this->assertFalse($result);
+    }
+
+    // -------------------------------------------------------------------------
     // clearBan() actually lifts an active ban
     // -------------------------------------------------------------------------
 

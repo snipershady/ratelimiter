@@ -369,6 +369,17 @@ class RateLimitMemcachedTest extends AbstractTestCase
     }
 
     // -------------------------------------------------------------------------
+    // clearBan() edge case: nothing to clear
+    // -------------------------------------------------------------------------
+
+    public function testClearBanNonExistentKeyReturnsFalse(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, $this->memcached);
+        $result = $limiter->clearBan('non_existent_key_' . microtime(true));
+        $this->assertFalse($result);
+    }
+
+    // -------------------------------------------------------------------------
     // clearBan() actually lifts an active ban
     // -------------------------------------------------------------------------
 

@@ -252,6 +252,17 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     }
 
     // -------------------------------------------------------------------------
+    // clearBan() edge case: nothing to clear
+    // -------------------------------------------------------------------------
+
+    public function testClearBanNonExistentKeyReturnsFalse(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
+        $result = $limiter->clearBan('non_existent_key_' . microtime(true));
+        $this->assertFalse($result);
+    }
+
+    // -------------------------------------------------------------------------
     // clearBan() actually lifts an active ban
     // -------------------------------------------------------------------------
 
