@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use Rector\CodingStyle\Rector\Stmt\NewlineAfterStatementRector;
 use Rector\Config\RectorConfig;
+use Rector\Naming\Rector\Assign\RenameVariableToMatchMethodCallReturnTypeRector;
 use Rector\Naming\Rector\Class_\RenamePropertyToMatchTypeRector;
+use Rector\Naming\Rector\ClassMethod\RenameVariableToMatchNewTypeRector;
 use Rector\Php84\Rector\MethodCall\NewMethodCallWithoutParenthesesRector;
 use Rector\Set\ValueObject\LevelSetList;
 use Rector\ValueObject\PhpVersion;
@@ -19,7 +21,8 @@ return RectorConfig::configure()
                     NewlineAfterStatementRector::class,
                     NewMethodCallWithoutParenthesesRector::class,
                     RenamePropertyToMatchTypeRector::class,
-                    Rector\Naming\Rector\Assign\RenameVariableToMatchMethodCallReturnTypeRector::class
+                    RenameVariableToMatchMethodCallReturnTypeRector::class,
+                    RenameVariableToMatchNewTypeRector::class
                 ])
                 ->withPreparedSets(
                         //deadCode: true,
