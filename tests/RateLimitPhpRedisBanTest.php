@@ -65,7 +65,7 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     public function testRateLimitWithBanPhpRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -105,7 +105,7 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     public function testRateLimitWithBanPhpRedisDetailed(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -161,7 +161,7 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     public function testBanTimeFrameExpirationResetsViolationsPhpRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test_btf_'.microtime(true);
+        $key = 'test_btf_' . microtime(true);
         $limit = 1;
         $ttl = 2;
         $maxAttempts = 2;
@@ -202,7 +202,7 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     public function testClientIpIsolationPhpRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test_ip_iso_'.microtime(true);
+        $key = 'test_ip_iso_' . microtime(true);
         $limit = 1;
         $ttl = 60;       // long enough to avoid expiry during the test
         $maxAttempts = 2;
@@ -247,7 +247,7 @@ class RateLimitPhpRedisBanTest extends AbstractTestCase
     public function testClearNonExistentKeyReturnsFalse(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $result = $limiter->clearRateLimitedKey('non_existent_key_'.microtime(true));
+        $result = $limiter->clearRateLimitedKey('non_existent_key_' . microtime(true));
         $this->assertFalse($result);
     }
 }

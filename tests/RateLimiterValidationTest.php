@@ -137,7 +137,7 @@ class RateLimiterValidationTest extends AbstractTestCase
      */
     public function testClearNonExistentKeyReturnsFalse(): void
     {
-        $result = $this->limiter->clearRateLimitedKey('non_existent_key_'.microtime(true));
+        $result = $this->limiter->clearRateLimitedKey('non_existent_key_' . microtime(true));
         $this->assertFalse($result);
     }
 }

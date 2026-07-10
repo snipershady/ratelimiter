@@ -62,7 +62,7 @@ class RateLimitTest extends AbstractTestCase
         // $this->markTestSkipped();
         $limit = 2;
         $ttl = 3;
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
 
         $result = $limiter->isLimited($key, $limit, $ttl);
@@ -95,7 +95,7 @@ class RateLimitTest extends AbstractTestCase
         // $this->markTestSkipped();
         $limit = 2;
         $ttl = 3;
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $this->redis = new Client(sprintf('tcp://%s:%d?persistent=redis01', $this->servername, $this->port));
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
 
@@ -128,7 +128,7 @@ class RateLimitTest extends AbstractTestCase
     {
         // $this->markTestSkipped();
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 2;
         $ttl = 3;
         $countFalse = 0;
@@ -150,7 +150,7 @@ class RateLimitTest extends AbstractTestCase
         $this->redis = new Client(sprintf('tcp://%s:%d?persistent=redis01', $this->servername, $this->port));
 
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 2;
         $ttl = 3;
         $countFalse = 0;
@@ -171,7 +171,7 @@ class RateLimitTest extends AbstractTestCase
         // $this->markTestSkipped();
 
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 1;
         $ttl = 3;
         $countFalse = 0;
@@ -191,7 +191,7 @@ class RateLimitTest extends AbstractTestCase
     {
         // $this->markTestSkipped();
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 1;
         $ttl = 2;
 
@@ -214,7 +214,7 @@ class RateLimitTest extends AbstractTestCase
     {
         // $this->markTestSkipped();
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 1;
         $ttl = 20;
         $sleep = 2;
@@ -235,7 +235,7 @@ class RateLimitTest extends AbstractTestCase
     {
         // $this->markTestSkipped();
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 1;
         $ttl = 20;
         $sleep = 5;
@@ -255,7 +255,7 @@ class RateLimitTest extends AbstractTestCase
     public function testLimitRedisAndDeleteKey(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 1;
         $ttl = 60;
         $sleep = 5;
@@ -279,7 +279,7 @@ class RateLimitTest extends AbstractTestCase
     {
         // $this->markTestSkipped();
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 1;
         $ttl = 60;
         $sleep = 5;

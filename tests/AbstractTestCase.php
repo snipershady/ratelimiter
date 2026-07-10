@@ -47,8 +47,8 @@ abstract class AbstractTestCase extends TestCase
         try {
             apcu_cache_info();
         } catch (\Exception $exception) {
-            echo PHP_EOL.$exception->getMessage().PHP_EOL;
-            echo PHP_EOL.'[APCU]'.PHP_EOL.' apc.enable_cli=1'.PHP_EOL;
+            echo PHP_EOL . $exception->getMessage() . PHP_EOL;
+            echo PHP_EOL . '[APCU]' . PHP_EOL . ' apc.enable_cli=1' . PHP_EOL;
             exit;
         }
     }

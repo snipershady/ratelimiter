@@ -55,7 +55,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testRateLimitWithBanRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -87,7 +87,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testRateLimitWithBanRedisTwo(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -121,7 +121,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testRateLimitWithBanAPCu(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = 'test'.microtime(true);
+        $key = 'test' . microtime(true);
         $limit = 1;
         $maxAttempts = 3;
         $ttl = 2;
@@ -169,7 +169,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testBanTimeFrameExpirationResetsViolationsRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test_btf_redis_'.microtime(true);
+        $key = 'test_btf_redis_' . microtime(true);
         $limit = 1;
         $ttl = 2;
         $maxAttempts = 2;
@@ -204,7 +204,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testBanTimeFrameExpirationResetsViolationsAPCu(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = 'test_btf_apcu_'.microtime(true);
+        $key = 'test_btf_apcu_' . microtime(true);
         $limit = 1;
         $ttl = 2;
         $maxAttempts = 2;
@@ -240,7 +240,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testClientIpIsolationRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $key = 'test_ip_iso_redis_'.microtime(true);
+        $key = 'test_ip_iso_redis_' . microtime(true);
         $limit = 1;
         $ttl = 60;       // long enough to avoid expiry during the test
         $maxAttempts = 2;
@@ -285,7 +285,7 @@ class RateLimitBanTest extends AbstractTestCase
     public function testClientIpIsolationAPCu(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $key = 'test_ip_iso_apcu_'.microtime(true);
+        $key = 'test_ip_iso_apcu_' . microtime(true);
         $limit = 1;
         $ttl = 60;
         $maxAttempts = 2;
@@ -326,14 +326,14 @@ class RateLimitBanTest extends AbstractTestCase
     public function testClearNonExistentKeyReturnsFalseRedis(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, $this->redis);
-        $result = $limiter->clearRateLimitedKey('non_existent_key_'.microtime(true));
+        $result = $limiter->clearRateLimitedKey('non_existent_key_' . microtime(true));
         $this->assertFalse($result);
     }
 
     public function testClearNonExistentKeyReturnsFalseAPCu(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
-        $result = $limiter->clearRateLimitedKey('non_existent_key_'.microtime(true));
+        $result = $limiter->clearRateLimitedKey('non_existent_key_' . microtime(true));
         $this->assertFalse($result);
     }
 }

@@ -75,8 +75,8 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
         $this->checkTimeFrame($banTimeFrame);
 
         $violationCountKey = null !== $clientIp
-            ? 'BAN_violation_count_'.$key.'_'.$clientIp
-            : 'BAN_violation_count_'.$key;
+            ? 'BAN_violation_count_' . $key . '_' . $clientIp
+            : 'BAN_violation_count_' . $key;
 
         if ($this->adapter->get($violationCountKey) >= $maxAttempts) {
             $ttl = $banTtl;

@@ -63,7 +63,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
 
         $limit = 2;
         $ttl = 3;
-        $key = 'test'.microtime(true).'_'.__METHOD__;
+        $key = 'test' . microtime(true) . '_' . __METHOD__;
 
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
 
@@ -97,7 +97,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
         // $this->markTestSkipped();
 
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test'.microtime(true).'_'.__METHOD__;
+        $key = 'test' . microtime(true) . '_' . __METHOD__;
         $limit = 2;
         $ttl = 3;
         $countFalse = 0;
@@ -116,7 +116,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
     public function testLimitRedisLimitOne(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test'.microtime(true).'_'.__METHOD__;
+        $key = 'test' . microtime(true) . '_' . __METHOD__;
         $limit = 1;
         $ttl = 3;
         $countFalse = 0;
@@ -135,7 +135,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
     public function testLimitRedisLimitOneAgain(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test'.microtime(true).'_'.__METHOD__;
+        $key = 'test' . microtime(true) . '_' . __METHOD__;
         $limit = 1;
         $ttl = 2;
 
@@ -157,7 +157,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
     public function testLimitRedisLimitOneAgainTtlExpire(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test'.microtime(true).'_'.__METHOD__;
+        $key = 'test' . microtime(true) . '_' . __METHOD__;
         $limit = 1;
         $ttl = 20;
         $sleep = 2;
@@ -179,7 +179,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
         // $this->markTestSkipped();
 
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test'.microtime(true).'_'.__METHOD__;
+        $key = 'test' . microtime(true) . '_' . __METHOD__;
         $limit = 1;
         $ttl = 20;
         $sleep = 5;
@@ -199,7 +199,7 @@ class RateLimitPhpRedisTest extends AbstractTestCase
     public function testLimitRedisAndDeleteKey(): void
     {
         $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $this->redis);
-        $key = 'test'.microtime(true).'_'.__METHOD__;
+        $key = 'test' . microtime(true) . '_' . __METHOD__;
         $limit = 1;
         $ttl = 60;
         $sleep = 5;

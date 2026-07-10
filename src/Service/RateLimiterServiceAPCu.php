@@ -45,7 +45,7 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         $this->checkTTL($banTtl);
         $this->checkTTL($ttl);
         $this->checkTimeFrame($banTimeFrame);
-        $violationCountKey = null !== $clientIp ? 'BAN_violation_count_'.$key.'_'.$clientIp : 'BAN_violation_count_'.$key;
+        $violationCountKey = null !== $clientIp ? 'BAN_violation_count_' . $key . '_' . $clientIp : 'BAN_violation_count_' . $key;
         $needBan = (int) apcu_fetch($violationCountKey);
         $actual = 0;
         if ($needBan >= $maxAttempts) {
