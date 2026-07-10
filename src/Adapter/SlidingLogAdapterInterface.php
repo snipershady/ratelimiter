@@ -48,8 +48,8 @@ interface SlidingLogAdapterInterface
      *      (ZREMRANGEBYSCORE only trims when a new request arrives, so a key with no
      *      further traffic would otherwise never be cleaned up)
      *
-     * @param string $member a value unique per call, so two requests scored in the
-     *                       same millisecond don't collide into a single ZSET entry
+     * @param string $member a value unique per call, so two requests scored at the
+     *                       same instant don't collide into a single ZSET entry
      *
      * @return int the cardinality after trimming, i.e. the number of requests
      *             still inside the sliding window, including this one

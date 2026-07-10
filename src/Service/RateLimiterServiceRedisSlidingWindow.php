@@ -57,12 +57,13 @@ class RateLimiterServiceRedisSlidingWindow extends AbstractRateLimiterService
     /**
      * {@inheritDoc}
      *
-     * $now/$cutoff are computed in milliseconds so that two requests within
-     * the same second are still ordered/evicted correctly; $ttl itself
-     * remains a plain "seconds" argument, as required by the contract shared
-     * with every other backend/algorithm. $member is unique per call (not
-     * just $now) so two requests scored in the same millisecond don't
-     * collide into a single ZSET entry and undercount.
+     * $now/$cutoff use microtime(true) (seconds with microsecond precision)
+     * rather than time(), so two requests within the same second are still
+     * ordered/evicted correctly against a precise cutoff — time()'s
+     * whole-second resolution would quantize the window boundary, defeating
+     * the point of an exact sliding log. $member is unique per call (not
+     * just $now) so two requests scored at the same instant don't collide
+     * into a single ZSET entry and undercount.
      */
     #[\Override]
     public function isLimited(string $key, int $limit, int $ttl): bool
@@ -70,8 +71,8 @@ class RateLimiterServiceRedisSlidingWindow extends AbstractRateLimiterService
         $this->checkKey($key);
         $this->checkTTL($ttl);
 
-        $now = microtime(true) * 1000;
-        $cutoff = $now - ($ttl * 1000);
+        $now = microtime(true);
+        $cutoff = $now - $ttl;
         $member = sprintf('%.6F:%s', $now, bin2hex(random_bytes(8)));
 
         $count = $this->adapter->recordAndCount($key, $now, $member, $cutoff, $ttl);
