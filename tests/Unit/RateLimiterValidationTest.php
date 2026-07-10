@@ -1,9 +1,10 @@
 <?php
 
-namespace RateLimiter\Tests;
+namespace RateLimiter\Tests\Unit;
 
 use RateLimiter\Enum\CacheEnum;
 use RateLimiter\Service\AbstractRateLimiterService;
+use RateLimiter\Tests\AbstractTestCase;
 
 /*
  * Copyright (C) 2022 Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
@@ -29,7 +30,7 @@ use RateLimiter\Service\AbstractRateLimiterService;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  *
- * @example ./vendor/bin/phpunit tests/RateLimiterValidationTest.php
+ * @example ./vendor/bin/phpunit tests/Unit/RateLimiterValidationTest.php
  */
 class RateLimiterValidationTest extends AbstractTestCase
 {

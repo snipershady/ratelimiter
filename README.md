@@ -493,7 +493,9 @@ correct violation counter — per-IP or shared — is cleared.
 
 | Command | Description |
 |---------|-------------|
-| `composer test` | Run PHPUnit tests |
+| `composer test` | Run the full PHPUnit suite (unit + integration) |
+| `composer test:unit` | Run only the fast unit suite — mocked, no external services, milliseconds |
+| `composer test:integration` | Run only the integration suite — needs live APCu/Redis/Memcached, several minutes |
 | `composer phpstan` | Run PHPStan static analysis |
 | `composer cs-fix` | Fix code style with PHP-CS-Fixer |
 | `composer cs-check` | Check code style (dry-run) |
@@ -501,6 +503,15 @@ correct violation counter — per-IP or shared — is cleared.
 | `composer rector-dry` | Preview Rector changes |
 | `composer quality` | Run all quality tools (Rector + CS-Fixer) |
 | `composer quality-check` | Check quality without changes |
+
+### Test suite layout
+
+Tests are split into two PHPUnit testsuites (`phpunit.xml`):
+
+- **`tests/Unit/`** — no external services, mocked cache clients, runs in milliseconds.
+- **`tests/Integration/`** — exercises real APCu/Redis/Memcached backends with real TTL expiry, so it takes several minutes (`sleep()`-driven).
+
+Within `tests/Integration/`, backend behaviour that is identical across every cache is defined once in `Contract/AbstractRateLimiterContractTestCase` and inherited by each concrete backend class; the two Redis backends (Predis and php-redis) additionally share `Contract/AbstractRedisFamilyContractTestCase`, since both expose the applied TTL identically via `ttl()`. APCu and Memcached implement their own ban-lifecycle tests instead of sharing that second layer, because neither exposes the remaining TTL the same way Redis does. A concrete backend class stays thin — it only wires up a connection and adds tests for genuinely backend-specific behaviour (e.g. php-redis's WRONGTYPE fail-closed handling, or Memcached's 30-day TTL threshold quirk).
 
 ## License
 

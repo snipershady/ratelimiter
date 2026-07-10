@@ -1,6 +1,6 @@
 <?php
 
-namespace RateLimiter\Tests;
+namespace RateLimiter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Predis\Client;
@@ -35,7 +35,7 @@ use RateLimiter\Service\RateLimiterServiceRedis;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  *
- * @example ./vendor/bin/phpunit tests/RateLimiterFactoryTest.php
+ * @example ./vendor/bin/phpunit tests/Unit/RateLimiterFactoryTest.php
  */
 class RateLimiterFactoryTest extends TestCase
 {

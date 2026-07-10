@@ -1,6 +1,6 @@
 <?php
 
-namespace RateLimiter\Tests;
+namespace RateLimiter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use RateLimiter\Adapter\PhpRedisAdapter;
@@ -35,7 +35,7 @@ use RateLimiter\Adapter\PhpRedisAdapter;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  *
- * @example ./vendor/bin/phpunit tests/PhpRedisAdapterTest.php
+ * @example ./vendor/bin/phpunit tests/Unit/PhpRedisAdapterTest.php
  */
 class PhpRedisAdapterTest extends TestCase
 {

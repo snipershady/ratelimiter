@@ -1,6 +1,6 @@
 <?php
 
-namespace RateLimiter\Tests;
+namespace RateLimiter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use RateLimiter\Service\RateLimiterServiceMemcached;
@@ -37,7 +37,7 @@ use RateLimiter\Service\RateLimiterServiceMemcached;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  *
- * @example ./vendor/bin/phpunit tests/RateLimiterServiceMemcachedUnitTest.php
+ * @example ./vendor/bin/phpunit tests/Unit/RateLimiterServiceMemcachedUnitTest.php
  */
 class RateLimiterServiceMemcachedUnitTest extends TestCase
 {

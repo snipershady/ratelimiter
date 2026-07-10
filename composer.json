@@ -41,6 +41,8 @@
     },
     "scripts": {
         "test": "vendor/bin/phpunit",
+        "test:unit": "vendor/bin/phpunit --testsuite unit",
+        "test:integration": "vendor/bin/phpunit --testsuite integration",
         "rector": "vendor/bin/rector process",
         "rector-dry": "vendor/bin/rector process --dry-run",
         "cs-fix": "vendor/bin/php-cs-fixer fix",
@@ -63,7 +65,9 @@
         ]
     },
     "scripts-descriptions": {
-        "test": "Run PHPUnit tests",
+        "test": "Run the full PHPUnit suite (unit + integration)",
+        "test:unit": "Run only the fast unit suite (mocked, no external services, milliseconds)",
+        "test:integration": "Run only the integration suite (needs live APCu/Redis/Memcached, several minutes)",
         "rector": "Run Rector to refactor code",
         "rector-dry": "Run Rector in dry-run mode (preview changes without applying)",
         "cs-fix": "Fix code style issues with PHP-CS-Fixer",
