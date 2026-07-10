@@ -30,6 +30,8 @@ namespace RateLimiter\Service;
  */
 class RateLimiterServiceAPCu extends AbstractRateLimiterService
 {
+    use ApcuAtomicCounterTrait;
+
     #[\Override]
     public function isLimited(string $key, int $limit, int $ttl): bool
     {
@@ -76,20 +78,5 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
         $violationCleared = apcu_delete($violationCountKey);
 
         return $mainCleared || $violationCleared;
-    }
-
-    /**
-     * Atomically increments a counter via apcu_inc(), which is itself a single
-     * lock-free atomic operation: it creates the key with the given TTL when
-     * missing, or increments the existing value otherwise, in one call. A
-     * separate exists-check-then-CAS-loop is unnecessary and, worse, races
-     * against key expiry (a key that expires between the check and the CAS
-     * can never satisfy apcu_cas(), spinning forever).
-     */
-    private function getActual(string $key, int $step, int $ttl): int
-    {
-        $success = null;
-
-        return (int) apcu_inc($key, $step, $success, $ttl);
     }
 }

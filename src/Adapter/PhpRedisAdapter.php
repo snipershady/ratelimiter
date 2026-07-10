@@ -40,10 +40,40 @@ namespace RateLimiter\Adapter;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-class PhpRedisAdapter implements RedisAdapterInterface
+class PhpRedisAdapter implements RedisAdapterInterface, SlidingLogAdapterInterface
 {
     public function __construct(private readonly \Redis $client)
     {
+    }
+
+    /**
+     * {@inheritDoc}
+     * exec()[0] = ZADD result
+     * exec()[1] = ZREMRANGEBYSCORE result
+     * exec()[2] = ZCARD result (the count we need)
+     * exec()[3] = EXPIRE result.
+     *
+     * The ZSET is guaranteed to exist here (ZADD just created/bumped it), so
+     * a false ZCARD result inside the transaction cannot be a legitimate
+     * empty-set reading (that would be 0, not false) and always indicates a
+     * genuine backend error.
+     */
+    #[\Override]
+    public function recordAndCount(string $key, float $score, string $member, float $cutoff, int $ttl): int
+    {
+        $this->client->clearLastError();
+        $result = $this->client->multi()
+            ->zAdd($key, $score, $member)
+            ->zRemRangeByScore($key, '-inf', '(' . $cutoff)
+            ->zCard($key)
+            ->expire($key, $ttl)
+            ->exec();
+
+        if (false === $result || false === ($result[2] ?? false)) {
+            throw $this->failure('ZADD/ZREMRANGEBYSCORE/ZCARD/EXPIRE transaction', $key);
+        }
+
+        return (int) $result[2];
     }
 
     #[\Override]

@@ -34,10 +34,30 @@ use Predis\Client;
  *
  * @author Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
  */
-class PredisAdapter implements RedisAdapterInterface
+class PredisAdapter implements RedisAdapterInterface, SlidingLogAdapterInterface
 {
     public function __construct(private readonly Client $client)
     {
+    }
+
+    /**
+     * {@inheritDoc}
+     * execute()[0] = ZADD result
+     * execute()[1] = ZREMRANGEBYSCORE result
+     * execute()[2] = ZCARD result (the count we need)
+     * execute()[3] = EXPIRE result.
+     */
+    #[\Override]
+    public function recordAndCount(string $key, float $score, string $member, float $cutoff, int $ttl): int
+    {
+        $result = $this->client->transaction()
+            ->zadd($key, [$member => $score])
+            ->zremrangebyscore($key, '-inf', '(' . $cutoff)
+            ->zcard($key)
+            ->expire($key, $ttl)
+            ->execute();
+
+        return (int) ($result[2] ?? 0);
     }
 
     #[\Override]

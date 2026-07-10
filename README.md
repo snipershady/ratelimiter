@@ -68,6 +68,36 @@ apc.enable_cli=1
 | PhpRedis | `CacheEnum::PHP_REDIS` | Redis via php-redis native extension (better performance) |
 | Memcached | `CacheEnum::MEMCACHED` | Memcached via php-memcached native extension |
 
+## Algorithms
+
+| Algorithm | Enum | Description |
+|-----------|------|--------------|
+| Fixed window | `AlgorithmEnum::FIXED_WINDOW` (default) | A single counter per key, reset when its TTL expires. Simple and cheap, but allows up to 2x `$limit` requests to pass across a single window boundary. |
+| Sliding window | `AlgorithmEnum::SLIDING_WINDOW` | Smooths that boundary-burst problem. See below for the precision trade-off between backends. |
+
+Select the algorithm with a fourth, optional argument to `factory()` — every existing call site that omits it keeps compiling and behaving exactly as before:
+
+```php
+use RateLimiter\Enum\AlgorithmEnum;
+
+$limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $redis, AlgorithmEnum::SLIDING_WINDOW);
+```
+
+`isLimited()`, `isLimitedWithBan()`, `clearRateLimitedKey()` and `clearBan()` keep the exact same signatures regardless of algorithm — only the object `factory()` hands you changes.
+
+### Sliding window precision differs by backend
+
+`AlgorithmEnum::SLIDING_WINDOW` is implemented differently depending on the backend, because each one offers different primitives:
+
+- **Redis (`REDIS` / `PHP_REDIS`)** — an **exact** sliding-window log: every request's timestamp is recorded in a per-key sorted set, and only requests within the trailing `$ttl` seconds are ever counted. No approximation.
+- **Memcached / APCu** — a **sliding window counter**: an O(1)-memory approximation using two counters (the current and previous `$ttl`-sized bucket), combined with a linear decay weight. This smooths the fixed window's boundary burst down to a small, bounded overcount, without the unbounded memory growth (or a CAS-loop that can spin forever) that an exact log would require on these backends.
+
+Practical consequence: the **same** `($key, $limit, $ttl)` triple can allow a slightly different number of requests across a window boundary depending on which backend you pick. Neither backend is "wrong" — Redis just affords a data structure (sorted sets) that Memcached/APCu don't, and the counter approximation's error is small and bounded (never worse than the fixed window's own 2x-at-the-boundary behavior).
+
+The ban-violation counter (`isLimitedWithBan()`'s `$maxAttempts`/`$banTimeFrame` tracking) is **always** fixed-window, on every backend and every algorithm — banning is a hard, deliberate action, not something that benefits from smoothing.
+
+> **Known limitation:** for the Memcached/APCu sliding window counter, `isLimitedWithBan()` swapping between the normal `$ttl` and `$banTtl` for the same `$key` switches to a different internal bucket namespace. The old namespace is left to expire on its own rather than eagerly deleted (eager deletion would risk prematurely ending an active ban if the violation counter happens to expire before `$banTtl` does — a normal, intentional configuration, see the `$banTimeFrame`/`$banTtl` example above). In practice this means a `$key` switching between two `$ttl` values in quick succession may see a small, temporary residual count from the abandoned namespace for up to that namespace's own `2 * $ttl` seconds — never longer, and never a permanent leak.
+
 ## API Reference
 
 ### `isLimited(string $key, int $limit, int $ttl): bool`
@@ -196,6 +226,26 @@ No external server required. Ideal for single-server deployments or CLI tools.
 
 ```php
 $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+$key     = __METHOD__;
+$limit   = 2;
+$ttl     = 3;
+
+if ($limiter->isLimited($key, $limit, $ttl)) {
+    throw new \Exception("LIMIT REACHED: YOU SHALL NOT PASS!");
+}
+```
+
+---
+
+### Sliding window
+
+Same four methods, same parameters — only the `factory()` call changes. See
+[Algorithms](#algorithms) for the precision trade-off between backends.
+
+```php
+use RateLimiter\Enum\AlgorithmEnum;
+
+$limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, $redis, AlgorithmEnum::SLIDING_WINDOW);
 $key     = __METHOD__;
 $limit   = 2;
 $ttl     = 3;
@@ -512,6 +562,8 @@ Tests are split into two PHPUnit testsuites (`phpunit.xml`):
 - **`tests/Integration/`** — exercises real APCu/Redis/Memcached backends with real TTL expiry, so it takes several minutes (`sleep()`-driven).
 
 Within `tests/Integration/`, backend behaviour that is identical across every cache is defined once in `Contract/AbstractRateLimiterContractTestCase` and inherited by each concrete backend class; the two Redis backends (Predis and php-redis) additionally share `Contract/AbstractRedisFamilyContractTestCase`, since both expose the applied TTL identically via `ttl()`. APCu and Memcached implement their own ban-lifecycle tests instead of sharing that second layer, because neither exposes the remaining TTL the same way Redis does. A concrete backend class stays thin — it only wires up a connection and adds tests for genuinely backend-specific behaviour (e.g. php-redis's WRONGTYPE fail-closed handling, or Memcached's 30-day TTL threshold quirk).
+
+`AlgorithmEnum::SLIDING_WINDOW` has its own pair of contract base classes, mirroring the fixed-window ones above but with timing assertions specific to that algorithm's behaviour: `Contract/AbstractRedisSlidingLogContractTestCase` (Predis/php-redis, exact log — `PredisSlidingWindowRateLimiterTest`/`PhpRedisSlidingWindowRateLimiterTest`) and `Contract/AbstractSlidingWindowCounterContractTestCase` (Memcached/APCu, two-bucket approximation — `MemcachedSlidingWindowRateLimiterTest`/`ApcuSlidingWindowRateLimiterTest`). The latter aligns every timing-sensitive test to an exact bucket boundary first (`alignToBucketBoundary()`), so outcomes are a deterministic function of the chosen `sleep()`s instead of depending on wall-clock phase at the moment the test happens to run.
 
 ## License
 

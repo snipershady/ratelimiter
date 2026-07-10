@@ -179,4 +179,69 @@ class PhpRedisAdapterTest extends TestCase
 
         $this->assertSame(1, $adapter->del('key'));
     }
+
+    // -------------------------------------------------------------------------
+    // recordAndCount() — sliding-window-log primitive
+    // -------------------------------------------------------------------------
+
+    public function testRecordAndCountReturnsCardinalityAfterTrimming(): void
+    {
+        $redis = $this->createStub(\Redis::class);
+        $redis->method('multi')->willReturnSelf();
+        $redis->method('zAdd')->willReturnSelf();
+        $redis->method('zRemRangeByScore')->willReturnSelf();
+        $redis->method('zCard')->willReturnSelf();
+        $redis->method('expire')->willReturnSelf();
+        // exec()[0]=zAdd, [1]=zRemRangeByScore, [2]=zCard (the count), [3]=expire
+        $redis->method('exec')->willReturn([1, 0, 3, true]);
+
+        $adapter = new PhpRedisAdapter($redis);
+
+        $this->assertSame(3, $adapter->recordAndCount('key', 1000.0, 'member', 500.0, 30));
+    }
+
+    /**
+     * The transaction itself failing outright (e.g. a dropped connection
+     * mid-MULTI/EXEC) must fail closed, mirroring expireAndGet()'s handling
+     * of the same failure mode.
+     */
+    public function testRecordAndCountThrowsWhenTransactionFails(): void
+    {
+        $redis = $this->createStub(\Redis::class);
+        $redis->method('multi')->willReturnSelf();
+        $redis->method('zAdd')->willReturnSelf();
+        $redis->method('zRemRangeByScore')->willReturnSelf();
+        $redis->method('zCard')->willReturnSelf();
+        $redis->method('expire')->willReturnSelf();
+        $redis->method('exec')->willReturn(false);
+        $redis->method('getLastError')->willReturn('connection lost');
+
+        $adapter = new PhpRedisAdapter($redis);
+
+        $this->expectException(\RuntimeException::class);
+        $adapter->recordAndCount('key', 1000.0, 'member', 500.0, 30);
+    }
+
+    /**
+     * The ZSET is guaranteed to exist at this point (ZADD just created/bumped
+     * it), so a false ZCARD result inside the transaction can only be a
+     * genuine error (e.g. WRONGTYPE), never a legitimate empty-set reading
+     * (that would be 0, not false).
+     */
+    public function testRecordAndCountThrowsWhenCardResultIsFalse(): void
+    {
+        $redis = $this->createStub(\Redis::class);
+        $redis->method('multi')->willReturnSelf();
+        $redis->method('zAdd')->willReturnSelf();
+        $redis->method('zRemRangeByScore')->willReturnSelf();
+        $redis->method('zCard')->willReturnSelf();
+        $redis->method('expire')->willReturnSelf();
+        $redis->method('exec')->willReturn([1, 0, false, true]);
+        $redis->method('getLastError')->willReturn('WRONGTYPE ...');
+
+        $adapter = new PhpRedisAdapter($redis);
+
+        $this->expectException(\RuntimeException::class);
+        $adapter->recordAndCount('key', 1000.0, 'member', 500.0, 30);
+    }
 }

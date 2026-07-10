@@ -7,6 +7,7 @@ namespace RateLimiter\Service;
 use Predis\Client;
 use RateLimiter\Adapter\PhpRedisAdapter;
 use RateLimiter\Adapter\PredisAdapter;
+use RateLimiter\Enum\AlgorithmEnum;
 use RateLimiter\Enum\CacheEnum;
 
 /*
@@ -244,19 +245,38 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
         }
     }
 
-    public static function factory(CacheEnum $cacheEnum, Client|\Redis|\Memcached|null $client = null): AbstractRateLimiterService
+    /**
+     * $algorithm defaults to FIXED_WINDOW, so every existing call site keeps
+     * compiling and behaving exactly as before — this parameter is a pure
+     * addition to the factory, not a change to it.
+     */
+    public static function factory(CacheEnum $cacheEnum, Client|\Redis|\Memcached|null $client = null, AlgorithmEnum $algorithmEnum = AlgorithmEnum::FIXED_WINDOW): AbstractRateLimiterService
     {
-        return match ($cacheEnum) {
-            CacheEnum::APCU => new RateLimiterServiceAPCu(),
-            CacheEnum::REDIS => new RateLimiterServiceRedis(
-                new PredisAdapter($client instanceof Client ? $client : throw new \InvalidArgumentException('Predis\Client required for REDIS backend'))
-            ),
-            CacheEnum::PHP_REDIS => new RateLimiterServiceRedis(
-                new PhpRedisAdapter($client instanceof \Redis ? $client : throw new \InvalidArgumentException('\Redis instance required for PHP_REDIS backend'))
-            ),
-            CacheEnum::MEMCACHED => new RateLimiterServiceMemcached(
-                $client instanceof \Memcached ? $client : throw new \InvalidArgumentException('\Memcached instance required for MEMCACHED backend')
-            ),
+        return match ($algorithmEnum) {
+            AlgorithmEnum::FIXED_WINDOW => match ($cacheEnum) {
+                CacheEnum::APCU => new RateLimiterServiceAPCu(),
+                CacheEnum::REDIS => new RateLimiterServiceRedis(
+                    new PredisAdapter($client instanceof Client ? $client : throw new \InvalidArgumentException('Predis\Client required for REDIS backend'))
+                ),
+                CacheEnum::PHP_REDIS => new RateLimiterServiceRedis(
+                    new PhpRedisAdapter($client instanceof \Redis ? $client : throw new \InvalidArgumentException('\Redis instance required for PHP_REDIS backend'))
+                ),
+                CacheEnum::MEMCACHED => new RateLimiterServiceMemcached(
+                    $client instanceof \Memcached ? $client : throw new \InvalidArgumentException('\Memcached instance required for MEMCACHED backend')
+                ),
+            },
+            AlgorithmEnum::SLIDING_WINDOW => match ($cacheEnum) {
+                CacheEnum::APCU => new RateLimiterServiceAPCuSlidingWindow(),
+                CacheEnum::REDIS => new RateLimiterServiceRedisSlidingWindow(
+                    new PredisAdapter($client instanceof Client ? $client : throw new \InvalidArgumentException('Predis\Client required for REDIS backend'))
+                ),
+                CacheEnum::PHP_REDIS => new RateLimiterServiceRedisSlidingWindow(
+                    new PhpRedisAdapter($client instanceof \Redis ? $client : throw new \InvalidArgumentException('\Redis instance required for PHP_REDIS backend'))
+                ),
+                CacheEnum::MEMCACHED => new RateLimiterServiceMemcachedSlidingWindow(
+                    $client instanceof \Memcached ? $client : throw new \InvalidArgumentException('\Memcached instance required for MEMCACHED backend')
+                ),
+            },
         };
     }
 

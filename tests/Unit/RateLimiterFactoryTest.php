@@ -4,11 +4,15 @@ namespace RateLimiter\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Predis\Client;
+use RateLimiter\Enum\AlgorithmEnum;
 use RateLimiter\Enum\CacheEnum;
 use RateLimiter\Service\AbstractRateLimiterService;
 use RateLimiter\Service\RateLimiterServiceAPCu;
+use RateLimiter\Service\RateLimiterServiceAPCuSlidingWindow;
 use RateLimiter\Service\RateLimiterServiceMemcached;
+use RateLimiter\Service\RateLimiterServiceMemcachedSlidingWindow;
 use RateLimiter\Service\RateLimiterServiceRedis;
+use RateLimiter\Service\RateLimiterServiceRedisSlidingWindow;
 
 /*
  * Copyright (C) 2022 Stefano Perrini <perrini.stefano@gmail.com> aka La Matrigna
@@ -108,5 +112,61 @@ class RateLimiterFactoryTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
         AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, new \Redis());
+    }
+
+    // -------------------------------------------------------------------------
+    // AlgorithmEnum::SLIDING_WINDOW — backend resolution
+    // -------------------------------------------------------------------------
+
+    /**
+     * Omitting $algorithm entirely must keep resolving to the fixed-window
+     * classes, so every call site written before this parameter existed
+     * keeps compiling and behaving identically.
+     */
+    public function testFactoryDefaultsToFixedWindow(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU);
+        $this->assertInstanceOf(RateLimiterServiceAPCu::class, $limiter);
+    }
+
+    public function testFactoryApcuSlidingWindowReturnsApcuSlidingWindowService(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::APCU, null, AlgorithmEnum::SLIDING_WINDOW);
+        $this->assertInstanceOf(RateLimiterServiceAPCuSlidingWindow::class, $limiter);
+    }
+
+    public function testFactoryRedisSlidingWindowReturnsRedisSlidingWindowServiceWithPredisClient(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::REDIS, new Client(), AlgorithmEnum::SLIDING_WINDOW);
+        $this->assertInstanceOf(RateLimiterServiceRedisSlidingWindow::class, $limiter);
+    }
+
+    public function testFactoryPhpRedisSlidingWindowReturnsRedisSlidingWindowServiceWithRedisClient(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::PHP_REDIS, new \Redis(), AlgorithmEnum::SLIDING_WINDOW);
+        $this->assertInstanceOf(RateLimiterServiceRedisSlidingWindow::class, $limiter);
+    }
+
+    public function testFactoryMemcachedSlidingWindowReturnsMemcachedSlidingWindowService(): void
+    {
+        $limiter = AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, new \Memcached(), AlgorithmEnum::SLIDING_WINDOW);
+        $this->assertInstanceOf(RateLimiterServiceMemcachedSlidingWindow::class, $limiter);
+    }
+
+    /**
+     * The client-type guards apply identically regardless of algorithm: a
+     * \Redis instance must still be rejected for the REDIS (Predis) backend.
+     */
+    public function testFactoryRedisSlidingWindowWithWrongClientTypeThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        AbstractRateLimiterService::factory(CacheEnum::REDIS, new \Redis(), AlgorithmEnum::SLIDING_WINDOW);
+    }
+
+    public function testFactoryMemcachedSlidingWindowWithoutClientThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('\Memcached instance required for MEMCACHED backend');
+        AbstractRateLimiterService::factory(CacheEnum::MEMCACHED, null, AlgorithmEnum::SLIDING_WINDOW);
     }
 }
