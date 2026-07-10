@@ -74,9 +74,9 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
      * later regardless of subsequent activity.
      */
     #[\Override]
-    protected function recordViolation(string $violationCountKey, int $banTimeFrame): void
+    protected function recordViolation(string $violationCountKey, int $banTimeFrame): int
     {
-        $this->adapter->increment($violationCountKey);
+        $count = $this->adapter->increment($violationCountKey);
 
         // expire() uses EXPIRE ... NX, so this is safe to call on every
         // violation: it binds the window on the first one and is a no-op
@@ -84,6 +84,8 @@ class RateLimiterServiceRedis extends AbstractRateLimiterService
         // conditionally expire" step that could leave the counter
         // permanently without a TTL if a crash landed between the two.
         $this->adapter->expire($violationCountKey, $banTimeFrame);
+
+        return $count;
     }
 
     #[\Override]

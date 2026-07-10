@@ -60,11 +60,11 @@ class RateLimiterServiceMemcached extends AbstractRateLimiterService
     }
 
     #[\Override]
-    protected function recordViolation(string $violationCountKey, int $banTimeFrame): void
+    protected function recordViolation(string $violationCountKey, int $banTimeFrame): int
     {
         // TTL = $banTimeFrame: the violation counter expires $banTimeFrame seconds after
         // the FIRST violation. atomicIncrement() only sets TTL at key creation (fixed window).
-        $this->atomicIncrement($violationCountKey, $banTimeFrame);
+        return $this->atomicIncrement($violationCountKey, $banTimeFrame);
     }
 
     #[\Override]

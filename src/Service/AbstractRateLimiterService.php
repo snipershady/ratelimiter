@@ -72,6 +72,18 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
      * per backend, where a fix applied to one (like the atomic-TTL handling
      * in recordViolation()) could otherwise be missed in the others.
      *
+     * Known limitation: the violation-count read below and the atomic
+     * increment in recordViolation() are not a single atomic operation, since
+     * whether this request counts as a violation is only known after
+     * isLimited() runs. Under concurrent requests that arrive while the
+     * counter sits exactly at $maxAttempts - 1, more than one of them can
+     * read the same pre-increment value and each proceed under the normal
+     * $ttl instead of exactly one crossing into $banTtl. The counter itself
+     * is always correct (each backend increments it atomically); only the
+     * ttl choice for the request(s) racing the exact crossing moment can be
+     * off by one window. This does not allow bypassing the ban indefinitely
+     * — the very next request reliably observes the post-crossing count.
+     *
      * @param string      $key          <p>Name of the function you want to limit. You can use __FUNCTION__ or __METHOD__ inside a subroutine to avoid collision</p>
      * @param int         $limit        <p>Limit</p>
      * @param int         $ttl          <p>Timeframe</p>
@@ -99,6 +111,13 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
         $actual = $this->isLimited($key, $limit, $ttl);
 
         if ($actual) {
+            // Return value intentionally unused here: it reflects the
+            // atomically-updated violation count, but this request's own ttl
+            // decision was already made above from the pre-increment read
+            // (see the class-level note on this method). It exists so
+            // implementations don't discard a value they already computed,
+            // and so tests can assert on it directly instead of racing a
+            // separate read against concurrent writers.
             $this->recordViolation($violationCountKey, $banTimeFrame);
         }
 
@@ -112,12 +131,19 @@ abstract class AbstractRateLimiterService implements RateLimiterInterface
     abstract protected function getViolationCount(string $violationCountKey): int;
 
     /**
-     * <p>Atomically increments the ban violation counter at $violationCountKey.
-     * Implementations must bind it to a $banTimeFrame-second window on the
-     * first violation only — the window is fixed from the first offence and
-     * must never be renewed by later ones.</p>.
+     * <p>Atomically increments the ban violation counter at $violationCountKey
+     * and returns its new value. Implementations must bind it to a
+     * $banTimeFrame-second window on the first violation only — the window is
+     * fixed from the first offence and must never be renewed by later ones.</p>.
+     *
+     * <p>The returned count is the true, atomically-observed value at the
+     * moment of increment (unlike getViolationCount(), which is a plain read
+     * and can be stale under concurrency — see the note on
+     * isLimitedWithBan()). Callers must not discard it if they need an
+     * accurate reading of whether this exact call crossed the ban
+     * threshold.</p>
      */
-    abstract protected function recordViolation(string $violationCountKey, int $banTimeFrame): void;
+    abstract protected function recordViolation(string $violationCountKey, int $banTimeFrame): int;
 
     /**
      * <p>Delete the limited key</p>.

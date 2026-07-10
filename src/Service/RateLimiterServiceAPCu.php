@@ -49,11 +49,11 @@ class RateLimiterServiceAPCu extends AbstractRateLimiterService
     }
 
     #[\Override]
-    protected function recordViolation(string $violationCountKey, int $banTimeFrame): void
+    protected function recordViolation(string $violationCountKey, int $banTimeFrame): int
     {
         // TTL = $banTimeFrame: the violation counter expires $banTimeFrame seconds after
         // the FIRST violation. apcu_inc() only sets the TTL at key creation (fixed window).
-        $this->getActual($violationCountKey, 1, $banTimeFrame);
+        return $this->getActual($violationCountKey, 1, $banTimeFrame);
     }
 
     #[\Override]
